@@ -883,6 +883,14 @@ name = "engine-identifiers"
 version = "0.1.0"
 
 [[package]]
+name = "engine-input"
+version = "0.1.0"
+dependencies = [
+ "engine-identifiers",
+ "engine-math",
+]
+
+[[package]]
 name = "engine-math"
 version = "0.1.0"
 
