@@ -45,7 +45,8 @@ public sealed class GameObject : Object
 
     public T AddComponent<T>() where T : Component => (T)AddComponent(typeof(T));
 
-    public Component AddComponent(Type componentType) => Context.Lifecycle.Attach(this, componentType);
+    public Component AddComponent(Type componentType) =>
+        Context.Invoke(_ => Context.Lifecycle.AttachComponent(this, componentType));
 
     public bool activeSelf => Context.Lifecycle.ReadBoolean(runtime =>
         OpenUnityNative.ou_gameobject_active(runtime, Identity, 0), "activeSelf query");
@@ -56,7 +57,8 @@ public sealed class GameObject : Object
     public void SetActive(bool value) => Context.Lifecycle.Mutate(runtime =>
         OpenUnityNative.ou_gameobject_set_active(runtime, Identity, value ? 1 : 0), "active state assignment");
 
-    internal Component[] GetComponentsInternal(Type type) => Context.Lifecycle.Components(this, type);
+    internal Component[] GetComponentsInternal(Type type) =>
+        Context.Invoke(_ => Context.Lifecycle.Components(this, type));
 
     internal Transform SceneTransform => ownedTransform;
 

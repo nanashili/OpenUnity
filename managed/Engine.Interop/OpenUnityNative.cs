@@ -5,7 +5,7 @@ using System.Runtime.InteropServices;
 namespace OpenUnity.Interop;
 
 /// <summary>Exact managed declarations for OpenUnity ABI v1.</summary>
-internal static class OpenUnityNative
+internal static partial class OpenUnityNative
 {
     internal const uint AbiVersion = 0x0001_0000;
     internal const uint ObjectNameAbiVersion = 0x0001_0000;

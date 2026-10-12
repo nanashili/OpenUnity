@@ -199,9 +199,13 @@ def require_controlled_path(path: Path) -> None:
 
 
 def snapshot_toolchain(output: Path) -> list[dict]:
-    interop = ROOT / "managed" / "Engine.Interop" / "OpenUnityNative.cs"
-    require_controlled_path(interop)
-    files = [interop]
+    interop_root = ROOT / "managed" / "Engine.Interop"
+    files = []
+    for name in ("OpenUnityNative.cs", "OpenUnityNative.PhysicsMotion.cs"):
+        interop = interop_root / name
+        require_controlled_path(interop)
+        files.append(interop)
+
     for directory in ("UnityEngine", "Scripting", "Hosting"):
         source_root = ROOT / "managed" / directory
         require_controlled_path(source_root)

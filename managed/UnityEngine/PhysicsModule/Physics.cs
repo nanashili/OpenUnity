@@ -2,7 +2,7 @@ using OpenUnity.Interop;
 
 namespace UnityEngine;
 
-public class Physics
+public partial class Physics
 {
     private static readonly Lazy<bool> GravityCapability = new(() =>
     {

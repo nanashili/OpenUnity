@@ -1,5 +1,3 @@
-using OpenUnity.Interop;
-
 namespace UnityEngine;
 
 internal sealed partial class LifecycleDispatcher
@@ -8,44 +6,16 @@ internal sealed partial class LifecycleDispatcher
     {
         CheckThread();
         HashSet<GameObject> releasedOwners = new(sceneOwners, ReferenceEqualityComparer.Instance);
-        foreach (long identity in scripts)
-            attachments.Remove(identity);
-        foreach (long identity in attachments.Where(item => releasedOwners.Contains(item.Value.AttachedOwner))
-                     .Select(item => item.Key).ToArray())
-            attachments.Remove(identity);
-        foreach (GameObject owner in releasedOwners)
-        {
-            if (owners.TryGetValue(owner.Identity, out GameObject? existing) && ReferenceEquals(existing, owner))
-                owners.Remove(owner.Identity);
-            GameObject.ReleaseSceneWrapper(owner);
-        }
-    }
+        HashSet<GameObject> failedOwners = new(ReferenceEqualityComparer.Instance);
+        List<Exception> failures = new();
 
-    internal Component[] Components(GameObject owner, Type type)
-    {
-        CheckThread();
-        ArgumentNullException.ThrowIfNull(type);
-        if (type != typeof(Transform) && type != typeof(Component) &&
-            type != typeof(Behaviour) && type != typeof(MonoBehaviour) &&
-            !(type.IsClass && typeof(MonoBehaviour).IsAssignableFrom(type)))
-            throw new NotSupportedException($"OpenUnity component queries do not support {type.FullName}.");
-        List<Component> found = new();
-        context.Invoke(runtime =>
-        {
-            int count = OpenUnityNative.ou_gameobject_component_count(runtime, owner.Identity);
-            Object.CheckNative(count, "component count query");
-            for (int index = 0; index < count; index++)
-            {
-                long identity = OpenUnityNative.ou_gameobject_component_at(runtime, owner.Identity, index);
-                Object.CheckNative(identity, "component identity query");
-                Component component = index == 0 ? owner.transform : attachments.TryGetValue(identity, out MonoBehaviour? script)
-                    ? script : throw new InvalidOperationException("OpenUnity returned a component without a canonical managed attachment.");
-                if (type.IsAssignableFrom(component.GetType()))
-                    found.Add(component);
-            }
-            return 0;
-        });
-        return found.ToArray();
+        TryReleaseSceneNativeRoots(releasedOwners, failedOwners, failures);
+        ValidateSceneOwnerRoots(releasedOwners, failedOwners, failures);
+        RemoveReleasedSceneScripts(scripts, releasedOwners, failedOwners);
+        RemoveReleasedSceneAttachments(releasedOwners, failedOwners);
+        RemoveReleasedSceneOwners(releasedOwners, failedOwners);
+
+        ThrowCleanupFailures(failures, "Scene attachment cleanup failed.");
     }
 
     internal void RetainOwner(GameObject owner)
@@ -60,25 +30,86 @@ internal sealed partial class LifecycleDispatcher
         return owners.GetValueOrDefault(identity);
     }
 
-    private void ReleaseDeadAttachments()
+    private void TryReleaseSceneNativeRoots(
+        HashSet<GameObject> releasedOwners,
+        HashSet<GameObject> failedOwners,
+        List<Exception> failures)
     {
-        context.Invoke(runtime =>
+        foreach (GameObject owner in releasedOwners)
         {
-            foreach (long identity in attachments.Keys.ToArray())
-                if (!IsAlive(runtime, identity))
-                    attachments.Remove(identity);
-            foreach (long identity in owners.Keys.ToArray())
-                if (!IsAlive(runtime, identity))
-                    owners.Remove(identity);
-            return 0;
-        });
+            try
+            {
+                nativeComponents.ReleaseRetiredOwner(owner);
+            }
+            catch (Exception failure)
+            {
+                failedOwners.Add(owner);
+                failures.Add(failure);
+            }
+        }
     }
 
-    private static bool IsAlive(long runtime, long identity) =>
-        OpenUnityNative.ou_object_is_alive(runtime, identity) switch
+    private void ValidateSceneOwnerRoots(
+        HashSet<GameObject> releasedOwners,
+        HashSet<GameObject> failedOwners,
+        List<Exception> failures)
+    {
+        foreach (GameObject owner in releasedOwners)
         {
-            0 => false,
-            1 => true,
-            int status => throw RuntimeContext.Failure("attachment liveness query", status)
-        };
+            if (!owners.TryGetValue(owner.Identity, out GameObject? existing) ||
+                ReferenceEquals(existing, owner))
+                continue;
+
+            failedOwners.Add(owner);
+            failures.Add(new InvalidOperationException(
+                "OpenUnity scene owner identity is rooted by a different managed object."));
+        }
+    }
+
+    private void RemoveReleasedSceneScripts(
+        IEnumerable<long> scripts,
+        HashSet<GameObject> releasedOwners,
+        HashSet<GameObject> failedOwners)
+    {
+        foreach (long identity in scripts)
+        {
+            if (!attachments.TryGetValue(identity, out MonoBehaviour? script))
+                continue;
+            if (CanReleaseSceneOwner(script.AttachedOwner, releasedOwners, failedOwners))
+                attachments.Remove(identity);
+        }
+    }
+
+    private void RemoveReleasedSceneAttachments(
+        HashSet<GameObject> releasedOwners,
+        HashSet<GameObject> failedOwners)
+    {
+        foreach (long identity in attachments
+                     .Where(item => CanReleaseSceneOwner(item.Value.AttachedOwner, releasedOwners, failedOwners))
+                     .Select(item => item.Key)
+                     .ToArray())
+            attachments.Remove(identity);
+    }
+
+    private void RemoveReleasedSceneOwners(
+        HashSet<GameObject> releasedOwners,
+        HashSet<GameObject> failedOwners)
+    {
+        foreach (GameObject owner in releasedOwners)
+        {
+            if (!CanReleaseSceneOwner(owner, releasedOwners, failedOwners))
+                continue;
+
+            if (owners.TryGetValue(owner.Identity, out GameObject? existing) &&
+                ReferenceEquals(existing, owner))
+                owners.Remove(owner.Identity);
+            GameObject.ReleaseSceneWrapper(owner);
+        }
+    }
+
+    private static bool CanReleaseSceneOwner(
+        GameObject owner,
+        HashSet<GameObject> releasedOwners,
+        HashSet<GameObject> failedOwners) =>
+        releasedOwners.Contains(owner) && !failedOwners.Contains(owner);
 }
