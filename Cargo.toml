@@ -1,5 +1,17 @@
 [workspace]
-members = ["crates/assets", "crates/scene", "crates/object-model", "crates/runtime", "crates/scripting-bridge", "crates/scripting-host", "crates/editor-core", "editor", "player"]
+members = [
+    "crates/assets",
+    "crates/scene",
+    "crates/object-model",
+    "crates/runtime",
+    "crates/scripting-bridge",
+    "crates/scripting-host",
+    "crates/editor-core",
+    "editor",
+    "player",
+    "crates/engine-math",
+    "crates/engine-identifiers",
+]
 resolver = "3"
 
 [workspace.package]
@@ -15,6 +27,8 @@ openunity-object-model = { path = "crates/object-model" }
 openunity-runtime = { path = "crates/runtime" }
 openunity-scripting-bridge = { path = "crates/scripting-bridge" }
 openunity-scripting-host = { path = "crates/scripting-host" }
+engine-math = { path = "crates/engine-math" }
+engine-identifiers = { path = "crates/engine-identifiers" }
 
 [workspace.lints.rust]
 unsafe_op_in_unsafe_fn = "deny"
