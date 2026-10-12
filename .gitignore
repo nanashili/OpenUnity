@@ -4,6 +4,7 @@
 !/Cargo.toml
 !/Cargo.lock
 !/global.json
+!/rust-toolchain.toml
 
 # Publish only this explicitly reviewed CI workflow.
 !/.github/
@@ -17,12 +18,15 @@
 !/crates/**/
 !/crates/**/Cargo.toml
 !/crates/**/src/**/*.rs
-!/crates/scene/src/settings-defaults.json
-!/player/
-/player/**
-!/player/Cargo.toml
-!/player/src/
-!/player/src/**/*.rs
+!/crates/**/tests/**/*.rs
+!/crates/engine-scene/src/settings-defaults.json
+
+# Application entrypoints and editor-owned services; local assets stay private.
+!/apps/
+/apps/**
+!/apps/**/
+!/apps/**/Cargo.toml
+!/apps/**/src/**/*.rs
 
 # Independent managed compatibility and hosting sources.
 !/managed/
@@ -30,14 +34,6 @@
 !/managed/**/
 !/managed/**/*.cs
 !/managed/**/*.csproj
-
-# Editor sources only; extracted reference resources remain local.
-!/editor/
-/editor/**
-!/editor/Cargo.toml
-!/editor/src/
-!/editor/src/**/
-!/editor/src/**/*.rs
 
 # Authored-project compiler, without research and inventory tooling.
 !/build-tools/
@@ -54,7 +50,7 @@
 /target/
 /dist/
 /build/
-/editor/assets/
+/apps/editor/assets/
 **/bin/
 **/obj/
 **/__pycache__/
