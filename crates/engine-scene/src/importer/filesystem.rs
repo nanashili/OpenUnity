@@ -1,5 +1,4 @@
-use crate::{MAX_DEPTH, MAX_INPUT_BYTES, MAX_OBJECTS, Result, SceneError};
-use engine_assets::MetadataIndex;
+use crate::{MAX_INPUT_BYTES, Result, SceneError};
 use std::{
     fs::{self, File},
     io::Read,
@@ -49,45 +48,4 @@ pub(super) fn read(path: &Path) -> Result<Vec<u8>> {
         return Err(SceneError::new("input grew beyond byte limit"));
     }
     Ok(bytes)
-}
-pub(super) fn index(
-    root: &Path,
-    dir: &Path,
-    depth: usize,
-    count: &mut usize,
-    index: &mut MetadataIndex,
-) -> Result<()> {
-    if depth > MAX_DEPTH {
-        return Err(SceneError::new("project directory depth limit"));
-    }
-    for entry in fs::read_dir(dir).map_err(SceneError::new)? {
-        let entry = entry.map_err(SceneError::new)?;
-        *count += 1;
-        if *count > MAX_OBJECTS {
-            return Err(SceneError::new("project entry count limit"));
-        }
-        let path = confined(root, &entry.path())?;
-        let kind = entry.file_type().map_err(SceneError::new)?;
-        if kind.is_dir() {
-            index_recurse(root, &path, depth + 1, count, index)?;
-        } else if !kind.is_file() {
-            return Err(SceneError::new("unsupported project file type"));
-        } else if path.extension().is_some_and(|e| e == "meta") {
-            let meta = engine_assets::read(&path).map_err(SceneError::new)?;
-            let asset = path.with_extension("");
-            confined(root, &asset)?;
-            index.insert(asset, meta).map_err(SceneError::new)?;
-        }
-    }
-    Ok(())
-}
-// Separate name avoids shadowing the recursive function with the index value.
-fn index_recurse(
-    root: &Path,
-    dir: &Path,
-    depth: usize,
-    count: &mut usize,
-    entries: &mut MetadataIndex,
-) -> Result<()> {
-    index(root, dir, depth, count, entries)
 }

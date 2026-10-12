@@ -1,5 +1,4 @@
-use crate::{Result, SceneError, ScenePlan, parse_json, yaml};
-use engine_assets::MetadataIndex;
+use crate::{MAX_DEPTH, MAX_OBJECTS, Result, SceneError, ScenePlan, parse_json, yaml};
 use std::path::{Component, Path, PathBuf};
 
 mod bindings;
@@ -10,7 +9,7 @@ mod objects;
 mod scripts;
 
 use documents::DocumentConversion;
-use filesystem::{confined, index, read};
+use filesystem::{confined, read};
 
 /// Read actual scene/meta files and an explicit type/field binding manifest.
 /// Paths must be within an absolute nonsymlink project root. No file is modified.
@@ -27,8 +26,14 @@ pub fn import_project(root: &Path, scene: &Path, bindings: &Path) -> Result<Scen
     let root = confined(root, root)?;
     let scene = confined(&root, scene)?;
     let binding_path = confined(&root, bindings)?;
-    let mut metadata = MetadataIndex::new();
-    index(&root, &root, 0, &mut 0, &mut metadata)?;
+    let metadata = engine_assets::discover_metadata_index(
+        &root,
+        engine_assets::MetadataDiscoveryLimits {
+            max_depth: MAX_DEPTH,
+            max_entries: MAX_OBJECTS,
+        },
+    )
+    .map_err(SceneError::new)?;
     let scene_meta = PathBuf::from(format!(
         "{}.meta",
         scene
