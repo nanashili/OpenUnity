@@ -38,7 +38,7 @@ Engine functionality is the current priority. Editor visual parity comes later.
 
 Requirements:
 
-- A current stable Rust toolchain, version 1.88 or newer, and a native C/C++ linker.
+- Rust 1.93.1 (pinned in rust-toolchain.toml) and a native C/C++ linker.
 - .NET SDK 8.0.425, with the patch roll-forward policy in [global.json](global.json).
 - A graphics-capable desktop session to launch the editor.
 
@@ -82,7 +82,7 @@ GitHub Actions builds release artifacts on all six current desktop targets:
 Every push to `main`, pull request, and manual workflow run builds the native
 workspace and managed assemblies, runs the native player self-check, and uploads
 an archive for each target. Each archive contains the editor, player, native
-bridge, and managed assemblies. Platform runtime dependencies are not bundled.
+bridge, CLI, and managed assemblies. Platform runtime dependencies are not bundled.
 Artifacts are retained for 14 days; select a completed run on the
 [Actions page](https://github.com/nanashili/OpenUnity/actions/workflows/build.yml)
 to download them.
@@ -95,10 +95,12 @@ available yet.
 
 | Path | Responsibility |
 | --- | --- |
-| [crates](crates) | Native object model, runtime, scene/assets, scripting bridge/host, and editor core. |
+| [crates](crates) | Explicit engine owners: math, identifiers, objects, serialization, scenes, assets, managed hosting and runtime. |
 | [managed](managed) | Independently implemented managed API assemblies and hosting layer. |
-| [player](player) | Standalone native player and developer execution commands. |
-| [editor](editor) | Native desktop authoring application. |
+| [apps/player](apps/player) | Thin standalone player entrypoint. |
+| [apps/cli](apps/cli) | Shared import, script execution and diagnostic commands. |
+| [apps/editor](apps/editor) | Desktop authoring application and editor-only services under core/. |
+| [managed/Engine.Interop](managed/Engine.Interop) | Explicit managed-to-native interface. |
 | [build-tools](build-tools) | Explicit authored-project compilation tool. |
 
 ## Implementation approach
