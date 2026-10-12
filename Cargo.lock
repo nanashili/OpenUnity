@@ -897,6 +897,7 @@ dependencies = [
 name = "engine-physics-api"
 version = "0.1.0"
 dependencies = [
+ "engine-identifiers",
  "engine-math",
 ]
 
