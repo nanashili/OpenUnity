@@ -5,6 +5,12 @@
 !/Cargo.lock
 !/global.json
 
+# Publish only this explicitly reviewed CI workflow.
+!/.github/
+/.github/**
+!/.github/workflows/
+!/.github/workflows/build.yml
+
 # Native engine and player sources, manifests, and required format schema.
 !/crates/
 /crates/**

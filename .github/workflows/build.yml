@@ -1,0 +1,137 @@
+name: Build
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: build-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: ${{ matrix.platform }}
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: linux-x64
+            runner: ubuntu-24.04
+            target: x86_64-unknown-linux-gnu
+            player: openunity-player
+            editor: openunity-editor
+            bridge: libopenunity_engine.so
+          - platform: linux-arm64
+            runner: ubuntu-24.04-arm
+            target: aarch64-unknown-linux-gnu
+            player: openunity-player
+            editor: openunity-editor
+            bridge: libopenunity_engine.so
+          - platform: windows-x64
+            runner: windows-2022
+            target: x86_64-pc-windows-msvc
+            player: openunity-player.exe
+            editor: openunity-editor.exe
+            bridge: openunity_engine.dll
+          - platform: windows-arm64
+            runner: windows-11-arm
+            target: aarch64-pc-windows-msvc
+            player: openunity-player.exe
+            editor: openunity-editor.exe
+            bridge: openunity_engine.dll
+          - platform: macos-x64
+            runner: macos-15-intel
+            target: x86_64-apple-darwin
+            player: openunity-player
+            editor: openunity-editor
+            bridge: libopenunity_engine.dylib
+          - platform: macos-arm64
+            runner: macos-15
+            target: aarch64-apple-darwin
+            player: openunity-player
+            editor: openunity-editor
+            bridge: libopenunity_engine.dylib
+
+    defaults:
+      run:
+        shell: bash
+
+    env:
+      CARGO_TERM_COLOR: always
+      CARGO_BUILD_JOBS: 2
+      CARGO_TARGET_DIR: target
+      DOTNET_CLI_TELEMETRY_OPTOUT: 1
+      DOTNET_NOLOGO: 1
+
+    steps:
+      - name: Check out source
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          persist-credentials: false
+
+      - name: Install Linux editor dependencies
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install --no-install-recommends -y \
+            pkg-config libx11-dev libxcursor-dev libxi-dev \
+            libxrandr-dev libxinerama-dev libxkbcommon-dev \
+            libwayland-dev libegl1-mesa-dev
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@686976e191b89faba57d3206551f0f330d8cb249 # stable
+        with:
+          targets: ${{ matrix.target }}
+
+      - name: Install pinned .NET SDK
+        uses: actions/setup-dotnet@26b0ec14cb23fa6904739307f278c14f94c95bf1 # v5
+        with:
+          global-json-file: global.json
+
+      - name: Build native workspace
+        env:
+          BUILD_TARGET: ${{ matrix.target }}
+        run: cargo build --workspace --release --locked --target "$BUILD_TARGET"
+
+      - name: Build managed assemblies
+        run: |
+          dotnet build managed/Hosting/OpenUnity.ManagedHosting.csproj \
+            --configuration Release --output dist/managed
+
+      - name: Run player self-check
+        env:
+          BUILD_TARGET: ${{ matrix.target }}
+          PLAYER_BINARY: ${{ matrix.player }}
+        run: '"target/$BUILD_TARGET/release/$PLAYER_BINARY" --self-check'
+
+      - name: Collect native binaries
+        env:
+          BUILD_TARGET: ${{ matrix.target }}
+          PLAYER_BINARY: ${{ matrix.player }}
+          EDITOR_BINARY: ${{ matrix.editor }}
+          BRIDGE_LIBRARY: ${{ matrix.bridge }}
+        run: |
+          mkdir -p dist/native
+          cp "target/$BUILD_TARGET/release/$PLAYER_BINARY" dist/native/
+          cp "target/$BUILD_TARGET/release/$EDITOR_BINARY" dist/native/
+          cp "target/$BUILD_TARGET/release/$BRIDGE_LIBRARY" dist/native/
+
+      - name: Package build
+        env:
+          BUILD_PLATFORM: ${{ matrix.platform }}
+        run: tar -czf "openunity-$BUILD_PLATFORM.tar.gz" -C dist .
+
+      - name: Upload build
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: openunity-${{ matrix.platform }}
+          path: openunity-${{ matrix.platform }}.tar.gz
+          if-no-files-found: error
+          retention-days: 14
