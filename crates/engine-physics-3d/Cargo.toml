@@ -1,0 +1,16 @@
+[package]
+name = "engine-physics-3d"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+
+[dependencies]
+engine-physics-api.workspace = true
+engine-math.workspace = true
+
+[dev-dependencies]
+engine-identifiers.workspace = true
+
+[lints]
+workspace = true

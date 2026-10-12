@@ -894,6 +894,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "engine-physics-3d"
+version = "0.1.0"
+dependencies = [
+ "engine-identifiers",
+ "engine-math",
+ "engine-physics-api",
+]
+
+[[package]]
 name = "engine-physics-api"
 version = "0.1.0"
 dependencies = [

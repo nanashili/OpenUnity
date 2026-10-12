@@ -7,6 +7,7 @@ members = [
     "crates/engine-scene",
     "crates/engine-assets",
     "crates/engine-physics-api",
+    "crates/engine-physics-3d",
     "crates/engine-scripting-bridge",
     "crates/engine-runtime",
     "crates/engine-runtime/ffi",
@@ -31,6 +32,7 @@ engine-serialization = { path = "crates/engine-serialization" }
 engine-scene = { path = "crates/engine-scene" }
 engine-assets = { path = "crates/engine-assets" }
 engine-physics-api = { path = "crates/engine-physics-api" }
+engine-physics-3d = { path = "crates/engine-physics-3d" }
 engine-scripting-bridge = { path = "crates/engine-scripting-bridge" }
 engine-runtime = { path = "crates/engine-runtime" }
 engine-runtime-ffi = { path = "crates/engine-runtime/ffi" }
