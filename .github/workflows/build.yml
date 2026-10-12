@@ -27,36 +27,42 @@ jobs:
             target: x86_64-unknown-linux-gnu
             player: openunity-player
             editor: openunity-editor
+            cli: openunity-cli
             bridge: libopenunity_engine.so
           - platform: linux-arm64
             runner: ubuntu-24.04-arm
             target: aarch64-unknown-linux-gnu
             player: openunity-player
             editor: openunity-editor
+            cli: openunity-cli
             bridge: libopenunity_engine.so
           - platform: windows-x64
             runner: windows-2022
             target: x86_64-pc-windows-msvc
             player: openunity-player.exe
             editor: openunity-editor.exe
+            cli: openunity-cli.exe
             bridge: openunity_engine.dll
           - platform: windows-arm64
             runner: windows-11-arm
             target: aarch64-pc-windows-msvc
             player: openunity-player.exe
             editor: openunity-editor.exe
+            cli: openunity-cli.exe
             bridge: openunity_engine.dll
           - platform: macos-x64
             runner: macos-15-intel
             target: x86_64-apple-darwin
             player: openunity-player
             editor: openunity-editor
+            cli: openunity-cli
             bridge: libopenunity_engine.dylib
           - platform: macos-arm64
             runner: macos-15
             target: aarch64-apple-darwin
             player: openunity-player
             editor: openunity-editor
+            cli: openunity-cli
             bridge: libopenunity_engine.dylib
 
     defaults:
@@ -88,6 +94,7 @@ jobs:
       - name: Install Rust
         uses: dtolnay/rust-toolchain@686976e191b89faba57d3206551f0f330d8cb249 # stable
         with:
+          toolchain: 1.93.1
           targets: ${{ matrix.target }}
 
       - name: Install pinned .NET SDK
@@ -104,6 +111,8 @@ jobs:
         run: |
           dotnet build managed/Hosting/OpenUnity.ManagedHosting.csproj \
             --configuration Release --output dist/managed
+          dotnet build managed/UnityEngine/PhysicsModule/UnityEngine.PhysicsModule.csproj \
+            --configuration Release --output dist/managed
 
       - name: Run player self-check
         env:
@@ -116,11 +125,13 @@ jobs:
           BUILD_TARGET: ${{ matrix.target }}
           PLAYER_BINARY: ${{ matrix.player }}
           EDITOR_BINARY: ${{ matrix.editor }}
+          CLI_BINARY: ${{ matrix.cli }}
           BRIDGE_LIBRARY: ${{ matrix.bridge }}
         run: |
           mkdir -p dist/native
           cp "target/$BUILD_TARGET/release/$PLAYER_BINARY" dist/native/
           cp "target/$BUILD_TARGET/release/$EDITOR_BINARY" dist/native/
+          cp "target/$BUILD_TARGET/release/$CLI_BINARY" dist/native/
           cp "target/$BUILD_TARGET/release/$BRIDGE_LIBRARY" dist/native/
 
       - name: Package build
