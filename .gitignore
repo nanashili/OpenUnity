@@ -1,4 +1,4 @@
-# Code-only publication: everything is private unless explicitly allowed below.
+# Product publication: everything is private unless explicitly allowed below.
 /*
 !/.gitignore
 !/Cargo.toml
@@ -87,3 +87,6 @@
 **/*.jpeg
 **/*.pdf
 **/*.md
+
+# Explicitly requested public project overview; all other Markdown stays private.
+!/README.md
