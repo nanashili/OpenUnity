@@ -1,0 +1,91 @@
+//! Small parser for the explicitly reviewed authored text grammar, not YAML.
+use crate::{MAX_DEPTH, MAX_INPUT_BYTES, MAX_OBJECTS, Result, SceneError};
+
+mod block;
+mod inline;
+mod node;
+
+use block::{Line, block};
+pub(crate) use node::Node;
+
+pub(crate) struct Document {
+    pub class_id: i64,
+    pub file_id: i64,
+    pub node: Node,
+}
+pub(crate) fn parse(bytes: &[u8]) -> Result<Vec<Document>> {
+    if bytes.len() > MAX_INPUT_BYTES {
+        return Err(SceneError::new("scene byte limit"));
+    }
+    let source = std::str::from_utf8(bytes).map_err(SceneError::new)?;
+    if source.contains(['\0', '\r', '\t']) {
+        return Err(SceneError::new("unsupported scene encoding/control"));
+    }
+    let mut lines = source.lines();
+    for expected in ["%UNITY 7.0", "%YAML 1.1", "%TAG !u! tag:unity3d.com,2011:"] {
+        if lines.next() != Some(expected) {
+            return Err(SceneError::new("unsupported saved scene directives"));
+        }
+    }
+    let mut result = Vec::new();
+    let mut header = None;
+    let mut body = Vec::new();
+    let finish = |header: Option<(i64, i64)>,
+                  body: &mut Vec<Line<'_>>,
+                  result: &mut Vec<Document>|
+     -> Result<()> {
+        if let Some((class_id, file_id)) = header {
+            let mut pos = 0;
+            let node = block(body, &mut pos, 0, 0)?;
+            if pos != body.len() {
+                return Err(SceneError::new("unconsumed document body"));
+            }
+            result.push(Document {
+                class_id,
+                file_id,
+                node,
+            });
+            body.clear();
+            if result.len() > MAX_OBJECTS {
+                return Err(SceneError::new("document count limit"));
+            }
+        }
+        Ok(())
+    };
+    for line in lines {
+        if let Some(rest) = line.strip_prefix("--- !u!") {
+            finish(header.take(), &mut body, &mut result)?;
+            let (class, file) = rest
+                .split_once(" &")
+                .ok_or_else(|| SceneError::new("unsupported document header"))?;
+            if !class.bytes().all(|b| b.is_ascii_digit())
+                || !file.bytes().all(|b| b.is_ascii_digit())
+            {
+                return Err(SceneError::new("invalid document header number"));
+            }
+            let class_id = class.parse().map_err(SceneError::new)?;
+            let file_id = file.parse().map_err(SceneError::new)?;
+            if file_id <= 0 {
+                return Err(SceneError::new("nonpositive document fileID"));
+            }
+            header = Some((class_id, file_id));
+        } else {
+            if header.is_none() || line.is_empty() {
+                return Err(SceneError::new("unsupported document syntax"));
+            }
+            let indent = line.len() - line.trim_start_matches(' ').len();
+            if indent % 2 != 0 || indent / 2 > MAX_DEPTH {
+                return Err(SceneError::new("unsupported indentation"));
+            }
+            body.push(Line {
+                indent,
+                body: &line[indent..],
+            });
+        }
+    }
+    finish(header, &mut body, &mut result)?;
+    if result.is_empty() {
+        return Err(SceneError::new("empty scene"));
+    }
+    Ok(result)
+}

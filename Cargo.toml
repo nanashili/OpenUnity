@@ -11,6 +11,10 @@ members = [
     "player",
     "crates/engine-math",
     "crates/engine-identifiers",
+    "crates/engine-assets",
+    "crates/engine-serialization",
+    "crates/engine-scene",
+    "crates/engine-object",
 ]
 resolver = "3"
 
@@ -29,6 +33,10 @@ openunity-scripting-bridge = { path = "crates/scripting-bridge" }
 openunity-scripting-host = { path = "crates/scripting-host" }
 engine-math = { path = "crates/engine-math" }
 engine-identifiers = { path = "crates/engine-identifiers" }
+engine-assets = { path = "crates/engine-assets" }
+engine-serialization = { path = "crates/engine-serialization" }
+engine-scene = { path = "crates/engine-scene" }
+engine-object = { path = "crates/engine-object" }
 
 [workspace.lints.rust]
 unsafe_op_in_unsafe_fn = "deny"

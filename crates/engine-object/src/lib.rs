@@ -1,0 +1,18 @@
+//! Owned identities, names, and component relationships for reviewed object contracts.
+#![forbid(unsafe_code)]
+
+mod component_ownership;
+mod object_access;
+mod object_error;
+mod object_retirement;
+mod object_store;
+mod registry;
+
+pub use engine_identifiers::{IdentityExhausted, ObjectId};
+pub use object_access::MAX_OBJECT_NAME_BYTES;
+pub use object_error::ObjectError;
+pub use object_store::{ObjectKind, ObjectStore};
+pub use registry::Registry;
+
+#[cfg(test)]
+mod tests;
