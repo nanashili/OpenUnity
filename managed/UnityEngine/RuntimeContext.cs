@@ -16,6 +16,7 @@ internal sealed class RuntimeContext : SafeHandle
         return true;
     });
     private readonly long runtime;
+    private Exception? unusableReason;
     private readonly Lazy<LifecycleDispatcher> lifecycle;
 
     private RuntimeContext(long runtime) : base(IntPtr.Zero, ownsHandle: true)
@@ -31,7 +32,9 @@ internal sealed class RuntimeContext : SafeHandle
         get
         {
             RequireEngineAccess();
-            return ProcessContext.Value;
+            RuntimeContext context = ProcessContext.Value;
+            context.RequireUsable();
+            return context;
         }
     }
 
@@ -80,9 +83,30 @@ internal sealed class RuntimeContext : SafeHandle
 
     public override bool IsInvalid => handle == IntPtr.Zero;
 
+    internal void RejectFurtherUse(Exception failure)
+    {
+        unusableReason ??= failure;
+    }
+
+    private void RequireUsable()
+    {
+        if (unusableReason is not null)
+            throw new InvalidOperationException(
+                "OpenUnity context cannot be reused after failed initialization or ownership recovery.", unusableReason);
+    }
+
     internal T Invoke<T>(Func<long, T> operation)
     {
+        RequireUsable();
+        return InvokeCleanup(operation);
+    }
+
+    // Only ownership release may bypass a failed timed initialization guard.
+    // This cannot restart a scene, advance time, or publish callbacks.
+    internal T InvokeCleanup<T>(Func<long, T> operation)
+    {
         RequireEngineAccess();
+        CheckLifecycleThreadIfInitialized();
         bool retained = false;
         try
         {

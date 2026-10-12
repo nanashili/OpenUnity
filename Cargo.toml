@@ -1,23 +1,19 @@
 [workspace]
 members = [
-    "crates/assets",
-    "crates/scene",
-    "crates/object-model",
-    "crates/runtime",
-    "crates/scripting-bridge",
-    "crates/scripting-host",
-    "apps/editor/core",
-    "apps/editor",
-    "player",
     "crates/engine-math",
     "crates/engine-identifiers",
-    "crates/engine-assets",
+    "crates/engine-object",
     "crates/engine-serialization",
     "crates/engine-scene",
-    "crates/engine-object",
+    "crates/engine-assets",
     "crates/engine-physics-api",
-    "crates/engine-runtime",
     "crates/engine-scripting-bridge",
+    "crates/engine-runtime",
+    "crates/engine-runtime/ffi",
+    "apps/player",
+    "apps/editor",
+    "apps/editor/core",
+    "apps/cli",
 ]
 resolver = "3"
 
@@ -28,21 +24,16 @@ rust-version = "1.85"
 publish = false
 
 [workspace.dependencies]
-openunity-assets = { path = "crates/assets" }
-openunity-scene = { path = "crates/scene" }
-openunity-object-model = { path = "crates/object-model" }
-openunity-runtime = { path = "crates/runtime" }
-openunity-scripting-bridge = { path = "crates/scripting-bridge" }
-openunity-scripting-host = { path = "crates/scripting-host" }
 engine-math = { path = "crates/engine-math" }
 engine-identifiers = { path = "crates/engine-identifiers" }
-engine-assets = { path = "crates/engine-assets" }
+engine-object = { path = "crates/engine-object" }
 engine-serialization = { path = "crates/engine-serialization" }
 engine-scene = { path = "crates/engine-scene" }
-engine-object = { path = "crates/engine-object" }
+engine-assets = { path = "crates/engine-assets" }
 engine-physics-api = { path = "crates/engine-physics-api" }
-engine-runtime = { path = "crates/engine-runtime" }
 engine-scripting-bridge = { path = "crates/engine-scripting-bridge" }
+engine-runtime = { path = "crates/engine-runtime" }
+engine-runtime-ffi = { path = "crates/engine-runtime/ffi" }
 
 [workspace.lints.rust]
 unsafe_op_in_unsafe_fn = "deny"

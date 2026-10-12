@@ -8,7 +8,8 @@
     <Platforms>AnyCPU</Platforms>
   </PropertyGroup>
   <ItemGroup>
+    <Compile Remove="PhysicsModule/**/*.cs" />
     <ProjectReference Include="../Scripting/UnityEngine.ScriptingModule.csproj" />
-    <Compile Include="../Interop/OpenUnityNative.cs" Link="Interop/OpenUnityNative.cs" />
+    <Compile Include="../Engine.Interop/OpenUnityNative.cs" Link="Interop/OpenUnityNative.cs" />
   </ItemGroup>
 </Project>

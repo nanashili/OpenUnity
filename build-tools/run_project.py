@@ -199,7 +199,7 @@ def require_controlled_path(path: Path) -> None:
 
 
 def snapshot_toolchain(output: Path) -> list[dict]:
-    interop = ROOT / "managed" / "Interop" / "OpenUnityNative.cs"
+    interop = ROOT / "managed" / "Engine.Interop" / "OpenUnityNative.cs"
     require_controlled_path(interop)
     files = [interop]
     for directory in ("UnityEngine", "Scripting", "Hosting"):
@@ -261,6 +261,7 @@ def write_project(output: Path, inputs: list[dict], source_bytes: list[bytes]) -
         ET.SubElement(items, "Compile", Include=source["snapshot"])
     references = (
         "toolchain/managed/UnityEngine/UnityEngine.CoreModule.csproj",
+        "toolchain/managed/UnityEngine/PhysicsModule/UnityEngine.PhysicsModule.csproj",
         "toolchain/managed/Hosting/OpenUnity.ManagedHosting.csproj",
     )
     for reference in references:
@@ -671,6 +672,7 @@ def collect_artifacts(output: Path, report: dict) -> dict[str, Path]:
     names = {
         "assembly": "Assembly-CSharp.dll",
         "core": "UnityEngine.CoreModule.dll",
+        "physics": "UnityEngine.PhysicsModule.dll",
         "scripting": "UnityEngine.ScriptingModule.dll",
         "hosting": "OpenUnity.ManagedHosting.dll",
         "runtime-config": "OpenUnity.ManagedHosting.runtimeconfig.json",

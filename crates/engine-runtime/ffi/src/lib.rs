@@ -1,0 +1,63 @@
+//! OpenUnity C ABI v1 with an independently versioned owned UTF-8 name extension.
+//! No Unity assemblies or runtime are loaded.
+//!
+//! All exports use the reserved `ou_` prefix. Name buffers are copied during the
+//! call under the runtime-store mutex; no borrowed storage pointer escapes.
+//! Unexpected internal panics and allocation failure terminate the process;
+//! ordinary invalid input, identity exhaustion and poisoned storage return errors.
+
+mod abi;
+mod lifecycle;
+mod object_lifetime;
+mod object_name;
+mod object_ownership;
+mod physics_gravity;
+mod runtime_store;
+mod scene;
+mod status;
+mod timing;
+mod transform_hierarchy;
+mod transform_pose;
+
+pub use abi::{
+    ABI_VERSION, OBJECT_NAME_ABI_VERSION, TRANSFORM_ABI_VERSION, ou_abi_version,
+    ou_object_name_abi_version, ou_transform_abi_version,
+};
+pub use lifecycle::{
+    LIFECYCLE_ABI_VERSION, ou_behaviour_active, ou_behaviour_enabled, ou_behaviour_set_enabled,
+    ou_component_abort, ou_component_commit, ou_component_reserve, ou_gameobject_active,
+    ou_gameobject_component_at, ou_gameobject_component_count, ou_gameobject_set_active,
+    ou_lifecycle_abi_version, ou_lifecycle_ack, ou_lifecycle_begin_frame, ou_lifecycle_begin_phase,
+    ou_lifecycle_flush_destroy, ou_lifecycle_frame_count, ou_lifecycle_next,
+    ou_object_destroy_deferred,
+};
+pub use object_lifetime::{
+    ou_object_create, ou_object_destroy, ou_object_is_alive, ou_object_kind,
+};
+pub use object_name::{ou_object_name_len, ou_object_name_read, ou_object_name_set};
+pub use object_ownership::{
+    ou_component_gameobject, ou_gameobject_create, ou_gameobject_transform,
+};
+pub use physics_gravity::{
+    PHYSICS_GRAVITY_ABI_VERSION, ou_physics_gravity_abi_version, ou_physics_gravity_read,
+    ou_physics_gravity_write,
+};
+pub use runtime_store::{ou_runtime_create, ou_runtime_destroy};
+pub use scene::{
+    ou_scene_abi_version, ou_scene_abort, ou_scene_destroy, ou_scene_object, ou_scene_publish,
+    ou_scene_release, ou_scene_stage, ou_transform_sibling_index,
+};
+pub use status::{
+    COUNT_OVERFLOW, GAMEPLAY_FAULTED, HIERARCHY_CYCLE, IDENTITY_EXHAUSTED, INSUFFICIENT_CAPACITY,
+    INVALID_BUFFER, INVALID_KIND, INVALID_LIFECYCLE, INVALID_NUMERIC, INVALID_OBJECT,
+    INVALID_RUNTIME, INVALID_SCENE, INVALID_SCENE_PLAN, INVALID_UTF8, STAGING_BUSY,
+    STORE_UNAVAILABLE, UNSUPPORTED_TRANSFORM,
+};
+pub use timing::{
+    TIME_ABI_VERSION, ou_time_abi_version, ou_time_begin_fixed, ou_time_begin_frame,
+    ou_time_configure, ou_time_next, ou_time_set, ou_time_snapshot,
+};
+pub use transform_hierarchy::{
+    ou_transform_child, ou_transform_child_count, ou_transform_parent, ou_transform_set_parent,
+};
+pub use transform_pose::{ou_transform_point, ou_transform_read, ou_transform_write};

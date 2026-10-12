@@ -44,15 +44,16 @@ internal sealed class SceneController : IHostedScript, IDisposable
         dispatcher.CheckThread();
         if (timing is { } settings)
             dispatcher.ConfigureTime(settings.Source, settings.Step);
-        scene = plan.Stage(context);
-        if (scene <= 0)
-        {
-            long status = scene;
-            scene = 0;
-            throw RuntimeContext.Failure("scene staging", status);
-        }
+        PublishOwnedScene();
+        DeliverInitialCallbacks();
+        return 0;
+    }
+
+    private void PublishOwnedScene()
+    {
         try
         {
+            StageScene();
             Dictionary<long, UnityEngine.Object> objects = BindSceneObjects();
             RestoreScalarFields(objects);
             RestoreReferenceFields(objects);
@@ -61,12 +62,51 @@ internal sealed class SceneController : IHostedScript, IDisposable
         }
         catch (Exception failure)
         {
-            ReleaseAfterFailure(failure);
+            RecoverFailedInitialization(failure);
             throw;
         }
+    }
+
+    private void RecoverFailedInitialization(Exception failure)
+    {
+        Exception retainedFailure = failure;
+        try
+        {
+            ReleaseAfterFailure(failure);
+        }
+        catch (Exception recovery)
+        {
+            retainedFailure = recovery;
+            throw;
+        }
+        finally
+        {
+            if (timing.HasValue)
+                context.RejectFurtherUse(retainedFailure);
+        }
+    }
+
+    private void DeliverInitialCallbacks()
+    {
         // Callback failures leave the published graph owned for explicit silent cleanup.
-        dispatcher.PumpMutations();
-        return 0;
+        try
+        {
+            dispatcher.PumpMutations();
+        }
+        catch (Exception failure)
+        {
+            if (timing.HasValue)
+                context.RejectFurtherUse(failure);
+            throw;
+        }
+    }
+
+    private void StageScene()
+    {
+        long staged = plan.Stage(context);
+        if (staged <= 0)
+            throw RuntimeContext.Failure("scene staging", staged);
+        scene = staged;
     }
 
     public long Tick(long value) => timing.HasValue ? dispatcher.TickTimed() : dispatcher.Tick();
@@ -104,33 +144,25 @@ internal sealed class SceneController : IHostedScript, IDisposable
     public void Dispose()
     {
         dispatcher.CheckThread();
-        List<Exception> failures = new();
-        if (scene != 0)
-        {
-            try
-            {
-                RequireSuccess(context.Invoke(runtime => published
-                    ? OpenUnityNative.ou_scene_release(runtime, scene)
-                    : OpenUnityNative.ou_scene_abort(runtime, scene)), "scene ownership release");
-                scene = 0;
-            }
-            catch (Exception failure)
-            {
-                failures.Add(failure);
-            }
-        }
-        try
-        {
-            dispatcher.ReleaseSceneBindings(scripts, owners);
-            scripts.Clear();
-            owners.Clear();
-        }
-        catch (Exception failure)
-        {
-            failures.Add(failure);
-        }
-        if (failures.Count != 0)
-            throw new AggregateException("Scene ownership cleanup failed.", failures);
+
+        // Live native components still require their canonical managed bindings.
+        // A rejected native release must leave those roots available for retry.
+        ReleaseNativeScene();
+
+        dispatcher.ReleaseSceneBindings(scripts, owners);
+        scripts.Clear();
+        owners.Clear();
+    }
+
+    private void ReleaseNativeScene()
+    {
+        if (scene == 0)
+            return;
+
+        RequireSuccess(context.InvokeCleanup(runtime => published
+            ? OpenUnityNative.ou_scene_release(runtime, scene)
+            : OpenUnityNative.ou_scene_abort(runtime, scene)), "scene ownership release");
+        scene = 0;
     }
 
     private Dictionary<long, UnityEngine.Object> BindSceneObjects()

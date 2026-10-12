@@ -1,0 +1,12 @@
+[package]
+name = "openunity-player"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+
+[dependencies]
+openunity-cli = { path = "../cli" }
+
+[lints]
+workspace = true

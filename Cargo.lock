@@ -911,6 +911,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "engine-runtime-ffi"
+version = "0.1.0"
+dependencies = [
+ "engine-object",
+ "engine-runtime",
+ "engine-serialization",
+]
+
+[[package]]
 name = "engine-scene"
 version = "0.1.0"
 dependencies = [
@@ -2088,8 +2097,14 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "9f7c3e4beb33f85d45ae3e3a1792185706c8e16d043238c593331cc7cd313b50"
 
 [[package]]
-name = "openunity-assets"
+name = "openunity-cli"
 version = "0.1.0"
+dependencies = [
+ "engine-runtime",
+ "engine-scene",
+ "engine-scripting-bridge",
+ "serde_json",
+]
 
 [[package]]
 name = "openunity-editor"
@@ -2113,51 +2128,10 @@ dependencies = [
 ]
 
 [[package]]
-name = "openunity-object-model"
-version = "0.1.0"
-
-[[package]]
 name = "openunity-player"
 version = "0.1.0"
 dependencies = [
- "openunity-runtime",
- "openunity-scene",
- "openunity-scripting-bridge",
- "openunity-scripting-host",
- "serde_json",
-]
-
-[[package]]
-name = "openunity-runtime"
-version = "0.1.0"
-dependencies = [
- "openunity-object-model",
- "openunity-scene",
-]
-
-[[package]]
-name = "openunity-scene"
-version = "0.1.0"
-dependencies = [
- "openunity-assets",
- "serde",
- "serde_json",
-]
-
-[[package]]
-name = "openunity-scripting-bridge"
-version = "0.1.0"
-dependencies = [
- "openunity-object-model",
- "openunity-runtime",
- "openunity-scene",
-]
-
-[[package]]
-name = "openunity-scripting-host"
-version = "0.1.0"
-dependencies = [
- "libloading",
+ "openunity-cli",
 ]
 
 [[package]]
