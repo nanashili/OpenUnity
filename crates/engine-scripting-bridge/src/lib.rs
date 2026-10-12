@@ -11,4 +11,7 @@ mod hostfxr;
 mod platform;
 
 pub use error::HostError;
-pub use host::{ManagedHost, ScriptSession, validate_time_source};
+pub use host::{
+    ManagedHost, SceneSnapshot, SceneSnapshotRow, ScriptSession, SnapshotState,
+    validate_time_source,
+};

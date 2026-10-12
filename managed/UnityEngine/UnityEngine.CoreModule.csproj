@@ -5,6 +5,7 @@
     <Version>0.1.0</Version>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     <Platforms>AnyCPU</Platforms>
   </PropertyGroup>
   <ItemGroup>
@@ -12,5 +13,6 @@
     <ProjectReference Include="../Scripting/UnityEngine.ScriptingModule.csproj" />
     <Compile Include="../Engine.Interop/OpenUnityNative.cs" Link="Interop/OpenUnityNative.cs" />
     <Compile Include="../Engine.Interop/OpenUnityNative.PhysicsMotion.cs" Link="Interop/OpenUnityNative.PhysicsMotion.cs" />
+    <Compile Include="../Engine.Interop/OpenUnityNative.SceneSnapshot.cs" Link="Interop/OpenUnityNative.SceneSnapshot.cs" />
   </ItemGroup>
 </Project>

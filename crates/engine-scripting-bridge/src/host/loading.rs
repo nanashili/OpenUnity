@@ -103,6 +103,54 @@ impl ManagedHost {
         }
     }
 
+    /// Load a saved-scene controller and require the additive snapshot capability.
+    ///
+    /// # Safety
+    /// Paths must satisfy [`Self::load`]. The bridge must implement the exact
+    /// INFRA-SCENE-SNAPSHOT-001 version and capture signatures in addition to
+    /// the saved-scene ABI.
+    pub unsafe fn load_scene_with_snapshot(
+        dotnet_root: &Path,
+        hostfxr: &Path,
+        bridge: &Path,
+        runtime_config: &Path,
+    ) -> Result<Self, HostError> {
+        // SAFETY: forwards the caller's reviewed snapshot ABI guarantees.
+        unsafe {
+            Self::load_mode(
+                dotnet_root,
+                hostfxr,
+                bridge,
+                runtime_config,
+                HostMode::SceneSnapshot,
+            )
+        }
+    }
+
+    /// Load a timed scene controller and require the additive snapshot capability.
+    ///
+    /// # Safety
+    /// Paths must satisfy [`Self::load`]. The bridge must implement the exact
+    /// INFRA-SCENE-SNAPSHOT-001 version and capture signatures in addition to
+    /// the timed-scene ABI.
+    pub unsafe fn load_timed_scene_with_snapshot(
+        dotnet_root: &Path,
+        hostfxr: &Path,
+        bridge: &Path,
+        runtime_config: &Path,
+    ) -> Result<Self, HostError> {
+        // SAFETY: forwards the caller's reviewed timed-scene snapshot ABI guarantees.
+        unsafe {
+            Self::load_mode(
+                dotnet_root,
+                hostfxr,
+                bridge,
+                runtime_config,
+                HostMode::TimedSceneSnapshot,
+            )
+        }
+    }
+
     unsafe fn load_mode(
         dotnet_root: &Path,
         hostfxr: &Path,
@@ -122,6 +170,7 @@ impl ManagedHost {
             create_timed_scene: entries.create_timed_scene,
             invoke: entries.invoke,
             destroy: entries.destroy,
+            scene_snapshot: entries.scene_snapshot,
             mode,
             _owner_thread: PhantomData,
         })

@@ -28,10 +28,12 @@ internal sealed partial class LifecycleDispatcher
         this.context = context;
     }
 
+    internal bool IsOwnerThread => Environment.CurrentManagedThreadId == ownerThread;
+
     internal void CheckThread()
     {
         RuntimeContext.RequireEngineAccess();
-        if (Environment.CurrentManagedThreadId != ownerThread)
+        if (!IsOwnerThread)
             throw new NotSupportedException("OpenUnity lifecycle operations must run on their context's owner thread.");
     }
 

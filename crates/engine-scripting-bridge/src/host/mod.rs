@@ -1,3 +1,4 @@
+use crate::abi::SceneSnapshot as SceneSnapshotFn;
 use crate::abi::{Create, CreateScene, CreateTimedScene, Destroy, Invoke};
 use libloading::Library;
 use std::marker::PhantomData;
@@ -8,9 +9,11 @@ mod creation;
 mod entries;
 mod loading;
 mod session;
+mod snapshot;
 
 pub use creation::validate_time_source;
 pub use session::ScriptSession;
+pub use snapshot::{SceneSnapshot, SceneSnapshotRow, SnapshotState};
 
 #[derive(Clone, Copy, PartialEq, Eq)]
 enum HostMode {
@@ -18,6 +21,8 @@ enum HostMode {
     Gameplay,
     Scene,
     TimedScene,
+    SceneSnapshot,
+    TimedSceneSnapshot,
 }
 
 /// A process-resident runtime and its reviewed managed bridge.
@@ -34,6 +39,7 @@ pub struct ManagedHost {
     create_timed_scene: Option<CreateTimedScene>,
     invoke: Invoke,
     destroy: Destroy,
+    scene_snapshot: Option<SceneSnapshotFn>,
     mode: HostMode,
     _owner_thread: PhantomData<Rc<()>>,
 }

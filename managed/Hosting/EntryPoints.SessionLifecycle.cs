@@ -11,6 +11,7 @@ public static unsafe partial class EntryPoints
     private static readonly object Gate = new();
     private static readonly Dictionary<long, Session> Sessions = new();
     private static long _lastHandle;
+    private static int activeSessionOperationDepth;
 
     [UnmanagedCallersOnly(CallConvs = new[] { typeof(CallConvCdecl) })]
     public static int Invoke(long handle, int opcode, long value, long* output)
@@ -27,7 +28,15 @@ public static unsafe partial class EntryPoints
                 if (opcode is not (InitializeOpcode or TickOpcode or ShutdownOpcode))
                     return InvalidInput;
 
-                return InvokeSession(session, opcode, value, output);
+                activeSessionOperationDepth++;
+                try
+                {
+                    return InvokeSession(session, opcode, value, output);
+                }
+                finally
+                {
+                    activeSessionOperationDepth--;
+                }
             }
         }
         catch

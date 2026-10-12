@@ -44,6 +44,12 @@ impl ManagedHost {
         assembly: &Path,
         plan: &[u8],
     ) -> Result<ScriptSession<'_>, HostError> {
+        if !matches!(self.mode, HostMode::Scene | HostMode::SceneSnapshot) {
+            return Err(HostError::setup(
+                "create scene",
+                "scene capability was not loaded",
+            ));
+        }
         let create = self
             .create_scene
             .ok_or_else(|| HostError::setup("create scene", "scene capability was not loaded"))?;
@@ -77,6 +83,15 @@ impl ManagedHost {
         source: i32,
         step: f64,
     ) -> Result<ScriptSession<'_>, HostError> {
+        if !matches!(
+            self.mode,
+            HostMode::TimedScene | HostMode::TimedSceneSnapshot
+        ) {
+            return Err(HostError::setup(
+                "create timed scene",
+                "timed scene capability was not loaded",
+            ));
+        }
         let create = self.create_timed_scene.ok_or_else(|| {
             HostError::setup(
                 "create timed scene",

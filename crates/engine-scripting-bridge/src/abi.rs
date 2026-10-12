@@ -25,8 +25,11 @@ pub(super) type CreateScene = unsafe extern "C" fn(*const u8, *const u8, i32) ->
 pub(super) type CreateTimedScene = unsafe extern "C" fn(*const u8, *const u8, i32, i32, f64) -> i64;
 pub(super) type Invoke = unsafe extern "C" fn(i64, i32, i64, *mut i64) -> i32;
 pub(super) type Destroy = unsafe extern "C" fn(i64) -> i32;
+pub(super) type SceneSnapshot = unsafe extern "C" fn(i64, *const i64, i32, *mut u8, i32) -> i32;
 
 pub(super) const ABI_VERSION: u32 = 0x0001_0000;
+pub(super) const SNAPSHOT_VERSION: u32 = 0x0001_0000;
+pub(super) const SNAPSHOT_ROW_STRIDE: u32 = 64;
 pub(super) const LOAD_ASSEMBLY_DELEGATE: i32 = 5;
 pub(super) const BRIDGE_TYPE: &str = "OpenUnity.Hosting.EntryPoints, OpenUnity.ManagedHosting";
 

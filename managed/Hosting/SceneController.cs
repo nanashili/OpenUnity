@@ -4,7 +4,7 @@ using UnityEngine;
 
 namespace OpenUnity.Hosting;
 
-internal sealed class SceneController : IHostedScript, IDisposable
+internal sealed partial class SceneController : IHostedScript, IDisposable
 {
     private readonly RuntimeContext context;
     private readonly LifecycleDispatcher dispatcher;

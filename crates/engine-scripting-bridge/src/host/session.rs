@@ -1,4 +1,5 @@
 use super::ManagedHost;
+use super::snapshot::{SceneSnapshot, decode, required_size};
 use crate::HostError;
 use std::io::Write;
 
@@ -48,6 +49,87 @@ impl<'a> ScriptSession<'a> {
         } else {
             Err(HostError::status("destroy script", status))
         }
+    }
+
+    /// Capture immutable values through the same initialized scene session.
+    pub fn capture_scene_snapshot(
+        &self,
+        owner_file_ids: &[i64],
+    ) -> Result<SceneSnapshot, HostError> {
+        let required = required_size(owner_file_ids.len())?;
+        let capture = self.host.scene_snapshot.ok_or_else(|| {
+            HostError::setup(
+                "capture scene snapshot",
+                "snapshot capability was not loaded",
+            )
+        })?;
+        let mut payload = vec![0_u8; required];
+        let count = i32::try_from(owner_file_ids.len())
+            .map_err(|_| HostError::status("capture scene snapshot", -2))?;
+        let capacity = i32::try_from(payload.len())
+            .map_err(|_| HostError::status("capture scene snapshot", -2))?;
+
+        // SAFETY: the capability owns the trusted ABI; both borrowed buffers
+        // remain valid and non-overlapping during this synchronous call.
+        let status = unsafe {
+            capture(
+                self.id.expect("owned session"),
+                owner_file_ids.as_ptr(),
+                count,
+                payload.as_mut_ptr(),
+                capacity,
+            )
+        };
+        if status != 0 {
+            return Err(map_capture_status(status));
+        }
+        decode(&payload, owner_file_ids)
+    }
+}
+
+fn map_capture_status(status: i32) -> HostError {
+    if matches!(
+        status,
+        -1 | -2
+            | -5
+            | -6
+            | -7
+            | -101
+            | -102
+            | -103
+            | -105
+            | -107
+            | -108
+            | -109
+            | -112
+            | -113
+            | -114
+            | -115
+            | -117
+    ) {
+        HostError::status("capture scene snapshot", status)
+    } else {
+        HostError::status("capture scene snapshot", -6)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::map_capture_status;
+
+    #[test]
+    fn forwards_only_defined_capture_statuses() {
+        let mapped_statuses = [
+            -1, -2, -5, -6, -7, -101, -102, -103, -105, -107, -108, -109, -112, -113, -114, -115,
+            -117,
+        ];
+
+        for status in mapped_statuses {
+            assert_eq!(map_capture_status(status).code(), Some(status));
+        }
+
+        assert_eq!(map_capture_status(-104).code(), Some(-6));
+        assert_eq!(map_capture_status(-100).code(), Some(-6));
     }
 }
 
