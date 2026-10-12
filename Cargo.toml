@@ -15,6 +15,9 @@ members = [
     "crates/engine-serialization",
     "crates/engine-scene",
     "crates/engine-object",
+    "crates/engine-physics-api",
+    "crates/engine-runtime",
+    "crates/engine-scripting-bridge",
 ]
 resolver = "3"
 
@@ -37,6 +40,9 @@ engine-assets = { path = "crates/engine-assets" }
 engine-serialization = { path = "crates/engine-serialization" }
 engine-scene = { path = "crates/engine-scene" }
 engine-object = { path = "crates/engine-object" }
+engine-physics-api = { path = "crates/engine-physics-api" }
+engine-runtime = { path = "crates/engine-runtime" }
+engine-scripting-bridge = { path = "crates/engine-scripting-bridge" }
 
 [workspace.lints.rust]
 unsafe_op_in_unsafe_fn = "deny"

@@ -894,6 +894,23 @@ dependencies = [
 ]
 
 [[package]]
+name = "engine-physics-api"
+version = "0.1.0"
+dependencies = [
+ "engine-math",
+]
+
+[[package]]
+name = "engine-runtime"
+version = "0.1.0"
+dependencies = [
+ "engine-math",
+ "engine-object",
+ "engine-physics-api",
+ "engine-serialization",
+]
+
+[[package]]
 name = "engine-scene"
 version = "0.1.0"
 dependencies = [
@@ -901,6 +918,13 @@ dependencies = [
  "engine-serialization",
  "serde",
  "serde_json",
+]
+
+[[package]]
+name = "engine-scripting-bridge"
+version = "0.1.0"
+dependencies = [
+ "libloading",
 ]
 
 [[package]]
