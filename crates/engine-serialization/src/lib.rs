@@ -3,6 +3,7 @@
 
 mod input;
 mod json;
+mod plan_output;
 mod records;
 mod validation;
 
@@ -11,6 +12,7 @@ pub use input::{
     validate_text,
 };
 pub use json::parse as parse_json;
+pub use plan_output::serialize_plan;
 pub use records::{FieldPlan, FieldValue, GameObjectPlan, ScenePlan, ScriptPlan, TransformPlan};
 pub use validation::parse_plan;
 
