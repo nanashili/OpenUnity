@@ -1,0 +1,24 @@
+[package]
+name = "openunity-editor"
+version.workspace = true
+edition.workspace = true
+rust-version = "1.88"
+publish.workspace = true
+
+# Private, locally installed reference resources are never required by default.
+[features]
+default = []
+local-reference-assets = []
+
+[dependencies]
+openunity-editor-core = { path = "core" }
+eframe = { version = "=0.33.3", default-features = false, features = ["wgpu", "default_fonts", "accesskit", "x11", "wayland"] }
+png = "=0.18.1"
+serde_json = "=1.0.145"
+
+[target.'cfg(target_os = "macos")'.dependencies]
+# eframe's WGPU feature does not select a native backend without defaults.
+wgpu = { version = "=27.0.1", default-features = false, features = ["metal"] }
+
+[lints]
+workspace = true

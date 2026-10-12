@@ -7,7 +7,7 @@ members = [
     "crates/scripting-bridge",
     "crates/scripting-host",
     "apps/editor/core",
-    "editor",
+    "apps/editor",
     "player",
     "crates/engine-math",
     "crates/engine-identifiers",
