@@ -20,12 +20,15 @@ impl ObjectStore {
             ObjectRecord::GameObject { .. } => ObjectKind::GameObject,
             ObjectRecord::Transform { .. } => ObjectKind::Transform,
             ObjectRecord::Script { .. } => ObjectKind::Script,
+            ObjectRecord::Rigidbody { .. } => ObjectKind::Rigidbody,
         })
     }
 
     fn name_owner(&self, id: ObjectId) -> Option<ObjectId> {
         match self.records.get(&id)? {
-            ObjectRecord::Transform { owner } | ObjectRecord::Script { owner } => Some(*owner),
+            ObjectRecord::Transform { owner }
+            | ObjectRecord::Script { owner }
+            | ObjectRecord::Rigidbody { owner } => Some(*owner),
             _ => Some(id),
         }
     }
@@ -72,7 +75,9 @@ impl ObjectStore {
     /// Rejects absent or wrong-kind identities.
     pub fn component_gameobject(&self, id: ObjectId) -> Result<ObjectId, ObjectError> {
         match self.record(id)? {
-            ObjectRecord::Transform { owner } | ObjectRecord::Script { owner } => Ok(*owner),
+            ObjectRecord::Transform { owner }
+            | ObjectRecord::Script { owner }
+            | ObjectRecord::Rigidbody { owner } => Ok(*owner),
             _ => Err(ObjectError::InvalidKind),
         }
     }
@@ -85,6 +90,40 @@ impl ObjectStore {
             ObjectRecord::GameObject { scripts, .. } => Ok(scripts),
             _ => Err(ObjectError::InvalidKind),
         }
+    }
+
+    /// Borrow every committed optional component in publication order.
+    pub fn owner_components(&self, owner: ObjectId) -> Result<&[ObjectId], ObjectError> {
+        match self.record(owner)? {
+            ObjectRecord::GameObject { components, .. } => Ok(components),
+            _ => Err(ObjectError::InvalidKind),
+        }
+    }
+
+    /// Resolve a full catalog entry, with Transform at index zero.
+    pub fn owner_component_at(
+        &self,
+        owner: ObjectId,
+        index: usize,
+    ) -> Result<ObjectId, ObjectError> {
+        if index == 0 {
+            return self.gameobject_transform(owner);
+        }
+        self.owner_components(owner)?
+            .get(index - 1)
+            .copied()
+            .ok_or(ObjectError::InvalidKind)
+    }
+
+    /// Return the number of entries in the full Transform-first catalog.
+    pub fn owner_component_count(&self, owner: ObjectId) -> Result<usize, ObjectError> {
+        Ok(self.owner_components(owner)?.len() + 1)
+    }
+
+    /// Whether a component has been committed into its owner's catalog.
+    pub fn is_component_published(&self, id: ObjectId) -> Result<bool, ObjectError> {
+        let owner = self.component_gameobject(id)?;
+        Ok(self.owner_components(owner)?.contains(&id))
     }
 
     /// Read a GameObject's independent activity flag.

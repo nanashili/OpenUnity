@@ -12,6 +12,7 @@ mod object_lifetime;
 mod object_name;
 mod object_ownership;
 mod physics_gravity;
+mod physics_motion;
 mod runtime_store;
 mod scene;
 mod status;
@@ -42,6 +43,15 @@ pub use physics_gravity::{
     PHYSICS_GRAVITY_ABI_VERSION, ou_physics_gravity_abi_version, ou_physics_gravity_read,
     ou_physics_gravity_write,
 };
+pub use physics_motion::{
+    PHYSICS_MOTION_ABI_VERSION, ou_physics_component_at, ou_physics_component_count,
+    ou_physics_mode_read, ou_physics_mode_write, ou_physics_motion_abi_version,
+    ou_physics_simulate, ou_physics_sync_transforms, ou_rigidbody_abort, ou_rigidbody_commit,
+    ou_rigidbody_flag_read, ou_rigidbody_flag_write, ou_rigidbody_interpolation_read,
+    ou_rigidbody_interpolation_write, ou_rigidbody_reserve, ou_rigidbody_scalar_read,
+    ou_rigidbody_scalar_write, ou_rigidbody_vector_read, ou_rigidbody_vector_write,
+    ou_rigidbody_wake_up,
+};
 pub use runtime_store::{ou_runtime_create, ou_runtime_destroy};
 pub use scene::{
     ou_scene_abi_version, ou_scene_abort, ou_scene_destroy, ou_scene_object, ou_scene_publish,
@@ -50,8 +60,8 @@ pub use scene::{
 pub use status::{
     COUNT_OVERFLOW, GAMEPLAY_FAULTED, HIERARCHY_CYCLE, IDENTITY_EXHAUSTED, INSUFFICIENT_CAPACITY,
     INVALID_BUFFER, INVALID_KIND, INVALID_LIFECYCLE, INVALID_NUMERIC, INVALID_OBJECT,
-    INVALID_RUNTIME, INVALID_SCENE, INVALID_SCENE_PLAN, INVALID_UTF8, STAGING_BUSY,
-    STORE_UNAVAILABLE, UNSUPPORTED_TRANSFORM,
+    INVALID_RUNTIME, INVALID_SCENE, INVALID_SCENE_PLAN, INVALID_UTF8, PHYSICS_UNSUPPORTED,
+    STAGING_BUSY, STORE_UNAVAILABLE, UNSUPPORTED_TRANSFORM,
 };
 pub use timing::{
     TIME_ABI_VERSION, ou_time_abi_version, ou_time_begin_fixed, ou_time_begin_frame,

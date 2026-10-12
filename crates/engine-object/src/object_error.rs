@@ -9,6 +9,8 @@ pub enum ObjectError {
     InvalidKind,
     /// The process-wide identity allocator is exhausted.
     IdentityExhausted,
+    /// Object metadata could not reserve its required storage.
+    CapacityExhausted,
     /// Component publication or retirement would violate ownership.
     ComponentState,
 }

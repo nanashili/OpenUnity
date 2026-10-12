@@ -1,6 +1,6 @@
 //! Ordinary lifecycle frame and ordered phase transitions.
 
-use crate::{Runtime, RuntimeError};
+use crate::{Runtime, RuntimeError, RuntimeInputError};
 
 impl Runtime {
     /// Read the actual per-context frame counter, initially zero.
@@ -15,12 +15,22 @@ impl Runtime {
     /// Increment the native frame counter and prepare the five ordered phases.
     /// # Errors
     /// Rejects unfinished/reentrant frames, faults, and counter overflow without mutation.
-    pub fn lifecycle_begin_frame(&mut self) -> Result<(), RuntimeError> {
-        self.lifecycle_ready()?;
+    pub fn lifecycle_begin_frame(&mut self) -> Result<(), RuntimeInputError> {
+        self.lifecycle_ready().map_err(RuntimeInputError::Runtime)?;
         if self.clock.enabled() {
-            return Err(RuntimeError::Lifecycle);
+            return Err(RuntimeInputError::Runtime(RuntimeError::Lifecycle));
         }
-        let count = self.next_frame_count()?;
+        // Reject a committed Fixed body after the existing clock-mode check,
+        // but before frame-count commit or any phase state changes.
+        self.physics_fixed_admission()
+            .map_err(RuntimeInputError::Runtime)?;
+        let count = self
+            .next_frame_count()
+            .map_err(RuntimeInputError::Runtime)?;
+
+        let prepared_input = self.input.prepare_outer_frame()?;
+
+        self.input.publish_outer_frame(prepared_input);
         self.commit_frame(count);
         Ok(())
     }
@@ -60,6 +70,12 @@ impl Runtime {
             || (self.clock.enabled() && phase == 2 && !self.clock.fixed_complete())
         {
             return Err(RuntimeError::Lifecycle);
+        }
+        // Start may commit a body or switch to Fixed after frame begin. Keep
+        // this check after all existing phase/order prerequisites, before the
+        // phase snapshot and before any delivery token.
+        if phase == 2 {
+            self.physics_fixed_admission()?;
         }
         let snapshot = if phase == 2 || phase == 3 {
             self.ordered_eligible(true)

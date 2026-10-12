@@ -8,12 +8,14 @@ use engine_object::ObjectId;
 #[derive(Debug)]
 struct DestructionPlan {
     targets: Vec<PlannedDestruction>,
+    retirement_ids: Vec<ObjectId>,
 }
 
 #[derive(Debug)]
 enum PlannedDestruction {
     Script(ObjectId),
     Plain(ObjectId),
+    Rigidbody(ObjectId),
     Subtree {
         root_owner: ObjectId,
         root_transform: ObjectId,
@@ -82,6 +84,7 @@ impl Runtime {
 
     fn plan_destruction(&self) -> Result<DestructionPlan, RuntimeError> {
         let mut targets = Vec::new();
+        let mut retirement_ids = Vec::new();
         for target in &self.lifecycle.pending_destroy {
             if !self.objects.is_alive(target.id) {
                 continue;
@@ -89,28 +92,39 @@ impl Runtime {
             let planned = match self.objects.kind(target.id)? {
                 ObjectKind::Script => PlannedDestruction::Script(target.id),
                 ObjectKind::Plain => PlannedDestruction::Plain(target.id),
+                ObjectKind::Rigidbody => PlannedDestruction::Rigidbody(target.id),
                 ObjectKind::GameObject => {
                     let root = self.gameobject_transform(target.id)?;
                     self.plan_subtree_destruction(target.id, root)?
                 }
                 ObjectKind::Transform => return Err(RuntimeError::InvalidKind),
             };
+            match &planned {
+                PlannedDestruction::Script(id)
+                | PlannedDestruction::Plain(id)
+                | PlannedDestruction::Rigidbody(id) => {
+                    retirement_ids.push(*id);
+                }
+                PlannedDestruction::Subtree { nodes, .. } => {
+                    retirement_ids.extend(nodes.iter().map(|node| node.owner));
+                }
+            }
             targets.push(planned);
         }
-        Ok(DestructionPlan { targets })
+        Ok(DestructionPlan {
+            targets,
+            retirement_ids,
+        })
     }
 
     fn commit_subtree_destruction(
         &mut self,
-        root_owner: ObjectId,
+        _root_owner: ObjectId,
         root_transform: ObjectId,
         parent: Option<ObjectId>,
         nodes: Vec<DestructionNode>,
     ) {
         // An earlier overlapping request may already have removed this subtree.
-        if !self.objects.is_alive(root_owner) {
-            return;
-        }
         if let Some(parent) = parent {
             if let Some(data) = self.transforms.get_mut(&parent) {
                 data.children.retain(|&child| child != root_transform);
@@ -120,13 +134,7 @@ impl Runtime {
             for script in node.scripts {
                 self.remove_script(script);
             }
-            // Removal is idempotent for overlapping targets. All hierarchy
-            // lookups were validated before this infallible commit begins.
-            if self.objects.is_alive(node.owner) {
-                self.objects
-                    .remove_object(node.owner)
-                    .expect("validated owner retirement");
-            }
+            // All hierarchy lookups were validated before this infallible commit begins.
             drop(self.transforms.remove(&node.transform));
         }
     }
@@ -135,7 +143,7 @@ impl Runtime {
         for target in plan.targets {
             match target {
                 PlannedDestruction::Script(id) => self.remove_script(id),
-                PlannedDestruction::Plain(id) => {
+                PlannedDestruction::Plain(id) | PlannedDestruction::Rigidbody(id) => {
                     if self.objects.is_alive(id) {
                         self.objects
                             .remove_object(id)
@@ -157,6 +165,7 @@ impl Runtime {
         // Retain every pending request if any validation or traversal fails.
         // No callback runs between this complete plan and its infallible commit.
         let plan = self.plan_destruction()?;
+        self.physics_retire_objects(&plan.retirement_ids)?;
         self.commit_destruction(plan);
         Ok(())
     }

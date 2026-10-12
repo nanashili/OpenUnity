@@ -5,7 +5,14 @@ use crate::{ObjectKind, Runtime, RuntimeError};
 use engine_object::ObjectId;
 
 impl Runtime {
-    pub(in crate::lifecycle) fn lifecycle_ready(&self) -> Result<(), RuntimeError> {
+    pub(crate) fn lifecycle_pending_owner(&self, owner: ObjectId) -> bool {
+        self.lifecycle
+            .pending_destroy
+            .iter()
+            .any(|target| target.id == owner)
+    }
+
+    pub(crate) fn lifecycle_ready(&self) -> Result<(), RuntimeError> {
         if self.lifecycle.faulted {
             Err(RuntimeError::DispatchFaulted)
         } else {
@@ -13,11 +20,35 @@ impl Runtime {
         }
     }
 
+    pub(crate) fn input_binding_ready(&self) -> Result<(), RuntimeError> {
+        self.lifecycle_ready()?;
+        if !self.frame_idle() || !self.lifecycle.deliveries.is_empty() {
+            return Err(RuntimeError::Lifecycle);
+        }
+        Ok(())
+    }
+
     pub(crate) fn scene_lifecycle_ready(&self, healthy: bool) -> Result<(), RuntimeError> {
         if healthy {
             self.lifecycle_ready()?;
         }
         if (healthy && !self.frame_idle()) || !self.lifecycle.deliveries.is_empty() {
+            return Err(RuntimeError::StagingBusy);
+        }
+        Ok(())
+    }
+
+    pub(crate) fn scene_release_lifecycle_ready(
+        &self,
+        scene_ids: &std::collections::BTreeSet<i64>,
+    ) -> Result<(), RuntimeError> {
+        self.scene_lifecycle_ready(false)?;
+        if self
+            .lifecycle
+            .pending_destroy
+            .iter()
+            .any(|target| scene_ids.contains(&target.id.to_raw()))
+        {
             return Err(RuntimeError::StagingBusy);
         }
         Ok(())
@@ -105,10 +136,7 @@ impl Runtime {
         Ok(false)
     }
 
-    pub(in crate::lifecycle) fn owner_pending_destroy(
-        &self,
-        owner: ObjectId,
-    ) -> Result<bool, RuntimeError> {
+    pub(crate) fn owner_pending_destroy(&self, owner: ObjectId) -> Result<bool, RuntimeError> {
         let mut current = Some(self.gameobject_transform(owner)?);
         while let Some(transform) = current {
             let data = self.transform(transform)?;

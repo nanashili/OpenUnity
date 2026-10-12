@@ -10,6 +10,9 @@ engine-math.workspace = true
 engine-serialization.workspace = true
 engine-object.workspace = true
 engine-physics-api.workspace = true
+engine-input.workspace = true
+engine-identifiers.workspace = true
+engine-physics-3d.workspace = true
 
 [lints]
 workspace = true

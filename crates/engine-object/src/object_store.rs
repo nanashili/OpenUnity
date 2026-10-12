@@ -15,6 +15,8 @@ pub enum ObjectKind {
     Transform,
     /// A reserved or published custom script component.
     Script,
+    /// A reserved or published Rigidbody component.
+    Rigidbody,
 }
 
 #[derive(Debug)]
@@ -28,11 +30,16 @@ pub(crate) enum ObjectRecord {
         active_self: bool,
         scripts: Vec<ObjectId>,
         reserved_scripts: Vec<ObjectId>,
+        components: Vec<ObjectId>,
+        reserved_rigidbody: Option<ObjectId>,
     },
     Transform {
         owner: ObjectId,
     },
     Script {
+        owner: ObjectId,
+    },
+    Rigidbody {
         owner: ObjectId,
     },
 }
@@ -77,6 +84,8 @@ impl ObjectStore {
                 active_self: true,
                 scripts: Vec::new(),
                 reserved_scripts: Vec::new(),
+                components: Vec::new(),
+                reserved_rigidbody: None,
             },
         );
         self.records

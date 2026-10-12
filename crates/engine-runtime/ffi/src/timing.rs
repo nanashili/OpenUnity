@@ -1,7 +1,7 @@
 //! Additive native timing ABI; caller storage never becomes runtime-owned.
 
 use crate::runtime_store::with_runtime;
-use crate::status::{INVALID_BUFFER, INVALID_KIND, runtime_error};
+use crate::status::{INVALID_BUFFER, INVALID_KIND, input_status, runtime_error};
 use engine_runtime::RuntimeError;
 use engine_runtime::{validate_time_configuration, validate_time_property};
 
@@ -116,7 +116,7 @@ pub unsafe extern "C" fn ou_time_snapshot(
 // SAFETY: unique reserved symbol with a fixed-width scalar interface.
 #[unsafe(no_mangle)]
 pub extern "C" fn ou_time_begin_frame(runtime: i64) -> i32 {
-    with_runtime(runtime, |runtime| status(runtime.time_begin_frame()))
+    with_runtime(runtime, |runtime| input_status(runtime.time_begin_frame()))
         .unwrap_or_else(|error| error)
 }
 

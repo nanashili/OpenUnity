@@ -2,7 +2,7 @@
 
 use super::protocol::status;
 use crate::runtime_store::with_runtime;
-use crate::status::INVALID_KIND;
+use crate::status::{INVALID_KIND, input_status};
 
 /// Read the actual per-runtime native frame counter.
 // SAFETY: unique reserved export with fixed-width integer interface.
@@ -23,15 +23,20 @@ macro_rules! frame_mutation {
 }
 
 frame_mutation!(
-    ou_lifecycle_begin_frame,
-    lifecycle_begin_frame,
-    "Begin one frame, rejecting unfinished or recursive scheduling."
-);
-frame_mutation!(
     ou_lifecycle_flush_destroy,
     lifecycle_flush_destroy,
     "Enter a destruction-only boundary without changing the frame counter."
 );
+
+/// Begin one frame, rejecting unfinished or recursive scheduling.
+// SAFETY: unique reserved export with fixed-width integer interface.
+#[unsafe(no_mangle)]
+pub extern "C" fn ou_lifecycle_begin_frame(runtime: i64) -> i32 {
+    with_runtime(runtime, |runtime| {
+        input_status(runtime.lifecycle_begin_frame())
+    })
+    .unwrap_or_else(|error| error)
+}
 
 /// Begin the next ordered native frame phase, 1 through 5.
 // SAFETY: unique reserved export with fixed-width integer interface.

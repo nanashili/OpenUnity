@@ -2,6 +2,30 @@
 
 use crate::{ObjectKind, Runtime, RuntimeError, TransformData};
 use engine_object::{IdentityExhausted, ObjectId};
+use std::collections::HashMap;
+
+struct PreparedTransformCleanup {
+    parent: Option<(ObjectId, Vec<ObjectId>)>,
+    transforms: Vec<ObjectId>,
+}
+
+impl PreparedTransformCleanup {
+    fn apply(self, storage: &mut HashMap<ObjectId, TransformData>) {
+        let Self { parent, transforms } = self;
+        for (id, data) in storage.iter_mut() {
+            if let Some((parent_id, original_children)) = parent.as_ref()
+                && parent_id == id
+            {
+                data.children.retain(|child| {
+                    original_children.contains(child) && !transforms.contains(child)
+                });
+            } else {
+                data.children.retain(|child| !transforms.contains(child));
+            }
+        }
+        storage.retain(|id, _| !transforms.contains(id));
+    }
+}
 
 impl Runtime {
     /// Allocate an independent plain object identity.
@@ -52,26 +76,37 @@ impl Runtime {
             }
             ObjectKind::Transform => return Err(RuntimeError::InvalidKind),
             ObjectKind::Script => return Err(RuntimeError::Lifecycle),
+            ObjectKind::Rigidbody => {
+                self.physics_retire_objects(&[id])?;
+                return Ok(());
+            }
             ObjectKind::GameObject => self.gameobject_transform(id)?,
         };
         if self.subtree_has_scripts(root)? {
             return Err(RuntimeError::Lifecycle);
         }
-        let parent = self.transform(root)?.parent;
-        if let Some(parent) = parent {
-            self.transform_mut(parent)?
-                .children
-                .retain(|child| *child != root);
-        }
         let mut pending = vec![root];
+        let parent = self.transform(root)?.parent;
+        let parent_cleanup = parent
+            .map(|parent_id| {
+                let data = self.transform(parent_id)?;
+                Ok::<_, RuntimeError>((parent_id, data.children.clone()))
+            })
+            .transpose()?;
+        let mut transforms = Vec::new();
+        let mut owners = Vec::new();
         while let Some(transform) = pending.pop() {
             let data = self.transform(transform)?.clone();
             pending.extend(data.children);
-            self.objects.remove_object(data.owner)?;
-            self.transforms
-                .remove(&transform)
-                .expect("validated Transform retirement");
+            transforms.push(transform);
+            owners.push(data.owner);
         }
+        let cleanup = PreparedTransformCleanup {
+            parent: parent_cleanup,
+            transforms,
+        };
+        self.physics_retire_objects(&owners)?;
+        cleanup.apply(&mut self.transforms);
         Ok(())
     }
 }

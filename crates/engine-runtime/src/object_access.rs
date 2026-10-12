@@ -25,6 +25,7 @@ impl Runtime {
             ObjectKind::GameObject => 2,
             ObjectKind::Transform => 3,
             ObjectKind::Script => 4,
+            ObjectKind::Rigidbody => 5,
         })
     }
 

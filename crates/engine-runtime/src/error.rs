@@ -1,5 +1,7 @@
 //! Failure taxonomy for the independently implemented runtime contracts.
 
+use engine_physics_api::PhysicsError;
+
 /// Independent typed-extension failures; these are not Unity native statuses.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum RuntimeError {
@@ -27,6 +29,20 @@ pub enum RuntimeError {
     InvalidScenePlan,
     /// Staging, owner thread, or terminal operation violation.
     StagingBusy,
+    /// A finite physics operation is outside the bounded native contract.
+    PhysicsUnsupported,
+}
+
+impl From<PhysicsError> for RuntimeError {
+    fn from(error: PhysicsError) -> Self {
+        match error {
+            PhysicsError::Numeric => Self::Numeric,
+            PhysicsError::Unsupported | PhysicsError::Capacity => Self::PhysicsUnsupported,
+            PhysicsError::InvalidBody => Self::InvalidObject,
+            PhysicsError::InvalidState | PhysicsError::StalePlan => Self::Lifecycle,
+            PhysicsError::RevisionExhausted => Self::CountOverflow,
+        }
+    }
 }
 
 impl From<engine_math::MathError> for RuntimeError {
@@ -44,6 +60,7 @@ impl From<engine_object::ObjectError> for RuntimeError {
             engine_object::ObjectError::InvalidObject => Self::InvalidObject,
             engine_object::ObjectError::InvalidKind => Self::InvalidKind,
             engine_object::ObjectError::IdentityExhausted => Self::IdentityExhausted,
+            engine_object::ObjectError::CapacityExhausted => Self::CountOverflow,
             engine_object::ObjectError::ComponentState => Self::Lifecycle,
         }
     }

@@ -8,6 +8,23 @@ pub struct Registry<T> {
     values: HashMap<ObjectId, T>,
 }
 
+/// A registry value detached by a transaction that still owns restoration.
+#[derive(Debug)]
+pub struct DetachedEntry<T> {
+    id: ObjectId,
+    value: T,
+}
+
+impl<T> DetachedEntry<T> {
+    /// Restore the exact identity/value pair after the peer operation fails.
+    pub fn restore(self, registry: &mut Registry<T>) {
+        registry.values.insert(self.id, self.value);
+    }
+
+    /// Discard the detached value after every peer commit succeeds.
+    pub fn discard(self) {}
+}
+
 impl<T> Default for Registry<T> {
     fn default() -> Self {
         Self {
@@ -56,5 +73,13 @@ impl<T> Registry<T> {
     /// Remove a live value, transferring ownership to the caller.
     pub fn remove(&mut self, id: ObjectId) -> Option<T> {
         self.values.remove(&id)
+    }
+
+    /// Detach an identity so a transaction can restore it after a peer operation
+    /// fails before commit.
+    pub fn detach(&mut self, id: ObjectId) -> Option<DetachedEntry<T>> {
+        self.values
+            .remove(&id)
+            .map(|value| DetachedEntry { id, value })
     }
 }

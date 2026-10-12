@@ -32,6 +32,22 @@ impl Clock {
         })
     }
 
+    /// Validate the complete fixed plan without publishing a clock candidate.
+    ///
+    /// Timed lifecycle admission calls this before any callback snapshot or
+    /// fixed-state transition. The returned value is intentionally advisory;
+    /// `fixed_candidate` recomputes the plan from the same immutable clock.
+    pub(crate) fn fixed_preflight(&self) -> Result<bool, RuntimeError> {
+        let frame = self.frame.ok_or(RuntimeError::Lifecycle)?;
+        let plan = match frame.fixed {
+            FixedState::Unplanned => self.plan_fixed(frame)?,
+            FixedState::Ready(plan) => plan,
+            FixedState::Complete => return Ok(false),
+            FixedState::Active(_) => return Err(RuntimeError::Lifecycle),
+        };
+        Ok(plan.remaining > 0)
+    }
+
     pub(crate) fn fixed_candidate(&self) -> Result<(Self, bool), RuntimeError> {
         let frame = self.frame.ok_or(RuntimeError::Lifecycle)?;
         let plan = match frame.fixed {

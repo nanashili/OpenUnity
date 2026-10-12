@@ -13,6 +13,7 @@ crate-type = ["rlib", "cdylib"]
 engine-serialization.workspace = true
 engine-object.workspace = true
 engine-runtime.workspace = true
+engine-physics-api.workspace = true
 
 [lints]
 workspace = true

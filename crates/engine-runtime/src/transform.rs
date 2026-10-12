@@ -5,6 +5,10 @@ use crate::{
     math::{self, Quaternion, Vector},
 };
 use engine_object::ObjectId;
+use std::collections::HashMap;
+
+pub(crate) mod authored_pose;
+use authored_pose::TransformEdit;
 
 impl Runtime {
     pub(crate) fn transform(&self, id: ObjectId) -> Result<&TransformData, RuntimeError> {
@@ -138,15 +142,31 @@ impl Runtime {
                 } else {
                     value
                 };
+
+                if property == 3 {
+                    self.physics_validate_transform_edit(id, TransformEdit::Scale)?;
+                }
+
+                let prepared_revision = if matches!(property, 1 | 4) {
+                    self.prepare_authored_position_write(id)?
+                } else {
+                    None
+                };
+
                 let data = self.transform_mut(id)?;
                 if property == 3 {
                     data.scale = value;
                 } else {
                     data.position = value;
                 }
+
+                if let Some(revision) = prepared_revision {
+                    self.commit_authored_position_write(id, revision);
+                }
             }
             2 | 5 => {
                 let value: Quaternion = values.try_into().map_err(|_| RuntimeError::InvalidKind)?;
+                self.physics_validate_transform_edit(id, TransformEdit::Rotation)?;
                 let mut value = math::normalize(value)?;
                 if property == 5 {
                     if let Some(parent) = parent {
@@ -159,5 +179,27 @@ impl Runtime {
             _ => return Err(RuntimeError::InvalidKind),
         }
         Ok(())
+    }
+}
+
+impl Runtime {
+    /// Borrow the exact Transform selected for native physics publication.
+    ///
+    /// Runtime physics admission must validate the owning GameObject and body
+    /// attachment before calling this helper.  Keeping that validation here
+    /// prevents the post-backend publication path from performing a fallible
+    /// lookup or silently targeting a different Transform.
+    pub(crate) fn checked_physics_transform_target(
+        transforms: &mut HashMap<ObjectId, TransformData>,
+        transform_id: ObjectId,
+        owner_id: ObjectId,
+    ) -> Result<&mut TransformData, RuntimeError> {
+        let target = transforms
+            .get_mut(&transform_id)
+            .ok_or(RuntimeError::InvalidObject)?;
+        if target.owner != owner_id {
+            return Err(RuntimeError::InvalidObject);
+        }
+        Ok(target)
     }
 }

@@ -5,6 +5,21 @@ use crate::{ObjectKind, Runtime, RuntimeError};
 use engine_object::ObjectId;
 
 impl Runtime {
+    pub(crate) fn physics_destruction_requested(&self, id: ObjectId) -> Result<bool, RuntimeError> {
+        if self.lifecycle_pending_owner(id) {
+            return Ok(true);
+        }
+
+        let owner = match self.objects.kind(id)? {
+            ObjectKind::GameObject => id,
+            ObjectKind::Script | ObjectKind::Rigidbody => self.objects.component_gameobject(id)?,
+            ObjectKind::Plain => return Ok(false),
+            ObjectKind::Transform => return Err(RuntimeError::InvalidKind),
+        };
+
+        Ok(self.lifecycle_pending_owner(owner))
+    }
+
     /// Queue owned destruction while preserving identities for callback queries.
     /// # Errors
     /// Rejects absent/wrong targets, unpublished reservations, and faulted dispatch.
@@ -15,6 +30,11 @@ impl Runtime {
             ObjectKind::Script => {
                 self.committed_script(id)?;
                 scripts.push(id);
+            }
+            ObjectKind::Rigidbody => {
+                if !self.objects.is_component_published(id)? {
+                    return Err(RuntimeError::Lifecycle);
+                }
             }
             ObjectKind::GameObject => {
                 let mut pending = vec![self.gameobject_transform(id)?];

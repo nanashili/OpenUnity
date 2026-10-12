@@ -1,7 +1,7 @@
 //! Stable ABI status codes and native error/identity translation.
 
 use engine_object::ObjectId;
-use engine_runtime::RuntimeError;
+use engine_runtime::{RuntimeError, RuntimeInputError};
 
 /// Invalid or destroyed runtime context.
 pub const INVALID_RUNTIME: i32 = -1;
@@ -40,6 +40,8 @@ pub const INVALID_SCENE: i32 = -15;
 pub const INVALID_SCENE_PLAN: i32 = -16;
 /// Busy/terminal transaction, owner thread violation, or forbidden legacy call.
 pub const STAGING_BUSY: i32 = -17;
+/// Physics profile, capacity, mode, synchronization, or hierarchy is unsupported.
+pub const PHYSICS_UNSUPPORTED: i32 = -18;
 
 pub(crate) fn runtime_error(error: RuntimeError) -> i32 {
     match error {
@@ -55,8 +57,23 @@ pub(crate) fn runtime_error(error: RuntimeError) -> i32 {
         RuntimeError::InvalidScene => INVALID_SCENE,
         RuntimeError::InvalidScenePlan => INVALID_SCENE_PLAN,
         RuntimeError::StagingBusy => STAGING_BUSY,
+        RuntimeError::PhysicsUnsupported => PHYSICS_UNSUPPORTED,
     }
 }
+
+pub(crate) fn input_status(result: Result<(), RuntimeInputError>) -> i32 {
+    result.map_or_else(
+        |error| match error {
+            RuntimeInputError::Runtime(error) => runtime_error(error),
+            RuntimeInputError::Event(_)
+            | RuntimeInputError::Binding(_)
+            | RuntimeInputError::RetryablePreparation(_)
+            | RuntimeInputError::InvariantFailure(_) => INVALID_LIFECYCLE,
+        },
+        |()| 0,
+    )
+}
+
 pub(crate) fn object_id(raw: i64) -> Result<ObjectId, RuntimeError> {
     ObjectId::from_raw(raw).ok_or(RuntimeError::InvalidObject)
 }

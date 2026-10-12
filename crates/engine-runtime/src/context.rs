@@ -1,7 +1,8 @@
 //! Runtime composition of domain objects, private hierarchy poses, and scheduling.
 
+use crate::physics;
 use crate::{
-    lifecycle,
+    input, lifecycle,
     math::{Quaternion, Vector},
     scene, timing,
 };
@@ -20,12 +21,29 @@ pub(super) struct TransformData {
 }
 
 /// Owns the identities of one engine context. Dropping it releases its objects.
-#[derive(Debug, Default)]
+#[derive(Debug)]
 pub struct Runtime {
     pub(super) objects: ObjectStore,
     pub(super) transforms: HashMap<ObjectId, TransformData>,
     pub(super) lifecycle: lifecycle::Lifecycle,
+    pub(super) input: input::InputState,
     pub(super) scenes: scene::Scenes,
     pub(super) clock: timing::Clock,
     pub(super) gravity: GravityConfiguration,
+    pub(super) physics: physics::PhysicsState,
+}
+
+impl Default for Runtime {
+    fn default() -> Self {
+        Self {
+            objects: ObjectStore::default(),
+            transforms: HashMap::new(),
+            lifecycle: lifecycle::Lifecycle::default(),
+            input: input::InputState::new(),
+            scenes: scene::Scenes::default(),
+            clock: timing::Clock::default(),
+            gravity: GravityConfiguration::default(),
+            physics: physics::PhysicsState::default(),
+        }
+    }
 }

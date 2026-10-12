@@ -53,6 +53,12 @@ impl Runtime {
         if parent == data.parent {
             return Ok(());
         }
+
+        // Same-parent requests return above before consulting physics.  For an
+        // actual graph change, reject both moving an attached body root and
+        // adding a child beneath one before computing or mutating any pose.
+        self.physics_validate_hierarchy_change(id, parent)?;
+
         let (position, rotation, scale) = if world_stays {
             self.reparent_local_pose(id, parent, &data)?
         } else {
