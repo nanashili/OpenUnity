@@ -1,0 +1,16 @@
+[package]
+name = "openunity-player"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+
+[dependencies]
+openunity-scene.workspace = true
+serde_json = "=1.0.145"
+openunity-runtime.workspace = true
+openunity-scripting-bridge.workspace = true
+openunity-scripting-host.workspace = true
+
+[lints]
+workspace = true

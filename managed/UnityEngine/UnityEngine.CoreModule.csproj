@@ -1,0 +1,14 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <AssemblyName>UnityEngine.CoreModule</AssemblyName>
+    <Version>0.1.0</Version>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <Platforms>AnyCPU</Platforms>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="../Scripting/UnityEngine.ScriptingModule.csproj" />
+    <Compile Include="../Interop/OpenUnityNative.cs" Link="Interop/OpenUnityNative.cs" />
+  </ItemGroup>
+</Project>

@@ -1,0 +1,18 @@
+[package]
+name = "openunity-scripting-bridge"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+
+[lib]
+name = "openunity_engine"
+crate-type = ["rlib", "cdylib"]
+
+[dependencies]
+openunity-scene.workspace = true
+openunity-object-model.workspace = true
+openunity-runtime.workspace = true
+
+[lints]
+workspace = true

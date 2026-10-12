@@ -1,0 +1,24 @@
+[workspace]
+members = ["crates/assets", "crates/scene", "crates/object-model", "crates/runtime", "crates/scripting-bridge", "crates/scripting-host", "crates/editor-core", "editor", "player"]
+resolver = "3"
+
+[workspace.package]
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.85"
+publish = false
+
+[workspace.dependencies]
+openunity-assets = { path = "crates/assets" }
+openunity-scene = { path = "crates/scene" }
+openunity-object-model = { path = "crates/object-model" }
+openunity-runtime = { path = "crates/runtime" }
+openunity-scripting-bridge = { path = "crates/scripting-bridge" }
+openunity-scripting-host = { path = "crates/scripting-host" }
+
+[workspace.lints.rust]
+unsafe_op_in_unsafe_fn = "deny"
+missing_docs = "warn"
+
+[workspace.lints.clippy]
+correctness = "deny"
