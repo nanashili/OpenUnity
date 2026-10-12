@@ -8,6 +8,8 @@ mod metadata;
 mod metadata_discovery;
 mod metadata_index;
 mod metadata_reader;
+mod obj_import;
+mod obj_import_error;
 mod parts_wire;
 mod render_assets;
 mod unlit_material;
@@ -20,6 +22,8 @@ pub use metadata_discovery::{
 };
 pub use metadata_index::{DuplicateGuid, MetadataIndex};
 pub use metadata_reader::read;
+pub use obj_import::parse_obj_mesh;
+pub use obj_import_error::ObjImportError;
 pub use render_assets::RenderAssets;
 pub use unlit_material::UnlitMaterial;
 
