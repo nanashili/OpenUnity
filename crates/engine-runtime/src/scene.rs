@@ -43,6 +43,33 @@ impl Runtime {
         Ok(scene)
     }
 
+    pub(crate) fn scene_snapshot_scene_ready(&self, handle: ObjectId) -> Result<(), RuntimeError> {
+        let scene = self.scene(handle)?;
+        if scene.staged.is_some() || scene.destroy_requested || self.scene_staging() {
+            return Err(RuntimeError::StagingBusy);
+        }
+        Ok(())
+    }
+
+    pub(crate) fn scene_snapshot_target(
+        &self,
+        handle: ObjectId,
+        local_file_id: i64,
+    ) -> Result<(Option<ObjectId>, bool), RuntimeError> {
+        let scene = self.scene(handle)?;
+        let id = *scene
+            .local
+            .get(&local_file_id)
+            .ok_or(RuntimeError::InvalidObject)?;
+        if scene.owners.contains(&id) {
+            return Ok((self.is_alive(id).then_some(id), !self.is_alive(id)));
+        }
+        if !self.is_alive(id) {
+            return Err(RuntimeError::InvalidKind);
+        }
+        Err(RuntimeError::InvalidKind)
+    }
+
     /// Resolve one validated local file identity through the trusted loader route.
     /// # Errors
     /// Rejects stale/foreign handles, owner thread violations, and unknown/dead identities.
@@ -213,3 +240,7 @@ impl Runtime {
         i32::try_from(index).map_err(|_| RuntimeError::CountOverflow)
     }
 }
+
+#[cfg(test)]
+#[path = "scene/snapshot_admission_tests.rs"]
+mod snapshot_admission_tests;

@@ -54,6 +54,17 @@ impl Runtime {
         Ok(())
     }
 
+    pub(crate) fn scene_snapshot_lifecycle_ready(&self) -> Result<(), RuntimeError> {
+        self.lifecycle_ready()?;
+        if !self.frame_idle()
+            || !self.lifecycle.deliveries.is_empty()
+            || !self.lifecycle.pending_destroy.is_empty()
+        {
+            return Err(RuntimeError::Lifecycle);
+        }
+        Ok(())
+    }
+
     pub(crate) fn scene_owned_scripts(
         &self,
         owners: &std::collections::BTreeSet<i64>,

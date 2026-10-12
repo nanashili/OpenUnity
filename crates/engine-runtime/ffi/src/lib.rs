@@ -15,6 +15,7 @@ mod physics_gravity;
 mod physics_motion;
 mod runtime_store;
 mod scene;
+mod scene_snapshot;
 mod status;
 mod timing;
 mod transform_hierarchy;
@@ -56,6 +57,9 @@ pub use runtime_store::{ou_runtime_create, ou_runtime_destroy};
 pub use scene::{
     ou_scene_abi_version, ou_scene_abort, ou_scene_destroy, ou_scene_object, ou_scene_publish,
     ou_scene_release, ou_scene_stage, ou_transform_sibling_index,
+};
+pub use scene_snapshot::{
+    SCENE_SNAPSHOT_ABI_VERSION, ou_scene_snapshot, ou_scene_snapshot_abi_version,
 };
 pub use status::{
     COUNT_OVERFLOW, GAMEPLAY_FAULTED, HIERARCHY_CYCLE, IDENTITY_EXHAUSTED, INSUFFICIENT_CAPACITY,
