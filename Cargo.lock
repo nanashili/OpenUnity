@@ -2129,7 +2129,7 @@ dependencies = [
  "engine-runtime",
  "engine-scene",
  "engine-scripting-bridge",
- "serde_json",
+ "engine-serialization",
 ]
 
 [[package]]

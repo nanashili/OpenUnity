@@ -24,7 +24,7 @@ pub(super) fn run(args: &[String]) -> Result<(), Box<dyn Error>> {
 
     let plan =
         engine_scene::import_project(Path::new(project), Path::new(scene), Path::new(bindings))?;
-    let payload = serde_json::to_vec(&plan)?;
+    let payload = engine_serialization::serialize_plan(&plan)?;
     // SAFETY: explicit developer CLI paths supply trusted hostfxr and the
     // independently built bridge implementing the reviewed scene ABI.
     let host = unsafe {

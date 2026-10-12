@@ -71,7 +71,7 @@ impl<'a> TimedSceneArguments<'a> {
 pub(super) fn run(args: &[String]) -> Result<(), Box<dyn Error>> {
     let args = TimedSceneArguments::parse(args)?;
     let plan = engine_scene::import_project(args.project, args.scene, args.bindings)?;
-    let payload = serde_json::to_vec(&plan)?;
+    let payload = engine_serialization::serialize_plan(&plan)?;
     // SAFETY: explicit developer paths must implement the reviewed trusted
     // hostfxr and INFRA-TIME-001 managed timed-scene signatures.
     let host = unsafe {
