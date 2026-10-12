@@ -39,6 +39,9 @@ engine-scripting-bridge = { path = "crates/engine-scripting-bridge" }
 engine-runtime = { path = "crates/engine-runtime" }
 engine-runtime-ffi = { path = "crates/engine-runtime/ffi" }
 
+serde = { version = "=1.0.228", features = ["derive"] }
+serde_json = { version = "=1.0.145", features = ["raw_value"] }
+
 [workspace.lints.rust]
 unsafe_op_in_unsafe_fn = "deny"
 missing_docs = "warn"
