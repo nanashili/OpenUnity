@@ -6,8 +6,8 @@ rust-version = "1.88"
 publish.workspace = true
 
 [dependencies]
-openunity-assets.workspace = true
-openunity-scene.workspace = true
+engine-assets.workspace = true
+engine-scene.workspace = true
 serde = { version = "=1.0.228", features = ["derive"] }
 serde_json = { version = "=1.0.145", features = ["raw_value"] }
 

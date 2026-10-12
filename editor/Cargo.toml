@@ -11,7 +11,7 @@ default = []
 local-reference-assets = []
 
 [dependencies]
-openunity-editor-core = { path = "../crates/editor-core" }
+openunity-editor-core = { path = "../apps/editor/core" }
 eframe = { version = "=0.33.3", default-features = false, features = ["wgpu", "default_fonts", "accesskit", "x11", "wayland"] }
 png = "=0.18.1"
 serde_json = "=1.0.145"

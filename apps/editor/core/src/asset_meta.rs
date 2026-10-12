@@ -1,2 +1,2 @@
 //! Shared, bounded asset metadata headers.
-pub use openunity_assets::*;
+pub use engine_assets::*;

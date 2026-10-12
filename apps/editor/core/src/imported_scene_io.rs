@@ -42,13 +42,13 @@ pub fn decode(bytes: &[u8]) -> Result<ImportedSnapshot, ImportedError> {
             "unsupported format or version",
         ));
     }
-    let plan = openunity_scene::parse_plan(archive.plan.get().as_bytes())
+    let plan = engine_scene::parse_plan(archive.plan.get().as_bytes())
         .map_err(|e| ImportedError::new("decode imported plan", e))?;
     ImportedSnapshot::new(archive.source, archive.next_id, archive.editor_ids, plan)
 }
 
 fn check_bytes(bytes: &[u8]) -> Result<(), ImportedError> {
-    if bytes.len() > openunity_scene::MAX_INPUT_BYTES {
+    if bytes.len() > engine_scene::MAX_INPUT_BYTES {
         return Err(ImportedError::new(
             "decode imported scene",
             "archive exceeds 16 MiB",
@@ -104,7 +104,7 @@ pub fn load(path: &Path, policy: &WritePolicy) -> Result<ImportedSnapshot, Impor
         .map_err(|e| ImportedError::new("load imported scene", e))?;
     let prior = std::fs::symlink_metadata(path)
         .map_err(|e| ImportedError::new("load imported scene", e))?;
-    if !prior.is_file() || prior.len() > openunity_scene::MAX_INPUT_BYTES as u64 {
+    if !prior.is_file() || prior.len() > engine_scene::MAX_INPUT_BYTES as u64 {
         return Err(ImportedError::new(
             "load imported scene",
             "nonregular or oversized archive",
@@ -114,14 +114,14 @@ pub fn load(path: &Path, policy: &WritePolicy) -> Result<ImportedSnapshot, Impor
     let metadata = file
         .metadata()
         .map_err(|e| ImportedError::new("load imported scene", e))?;
-    if !metadata.is_file() || metadata.len() > openunity_scene::MAX_INPUT_BYTES as u64 {
+    if !metadata.is_file() || metadata.len() > engine_scene::MAX_INPUT_BYTES as u64 {
         return Err(ImportedError::new(
             "load imported scene",
             "nonregular or oversized archive",
         ));
     }
     let mut bytes = Vec::new();
-    file.take(openunity_scene::MAX_INPUT_BYTES as u64 + 1)
+    file.take(engine_scene::MAX_INPUT_BYTES as u64 + 1)
         .read_to_end(&mut bytes)
         .map_err(|e| ImportedError::new("load imported scene", e))?;
     decode(&bytes)

@@ -2106,8 +2106,8 @@ dependencies = [
 name = "openunity-editor-core"
 version = "0.1.0"
 dependencies = [
- "openunity-assets",
- "openunity-scene",
+ "engine-assets",
+ "engine-scene",
  "serde",
  "serde_json",
 ]
