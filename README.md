@@ -41,6 +41,12 @@ Native query volumes are a separate foundation with a 256-volume limit per
 runtime. They do not follow Transforms or expose Unity Collider/Physics.Raycast
 APIs, and have no verified Unity query compatibility.
 
+The native asset catalog resolves up to 256 explicit GUID/local-file-ID bindings
+to typed meshes and unlit materials. Scene reference extraction separately retains
+MeshFilter/MeshRenderer ownership and ordered asset pointers within the supported
+text grammar. Automatic scene-to-renderer binding and Unity importer-generated
+subobject IDs remain unsupported.
+
 Engine functionality is the current priority. Editor visual parity comes later.
 
 ## Build from source
