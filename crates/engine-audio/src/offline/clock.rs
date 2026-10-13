@@ -9,6 +9,8 @@ struct Scheduled {
 }
 
 /// Integer sample clock with ordered bounded voice commands.
+///
+/// A mixer rejection while executing a command permanently fails the clock.
 pub struct DspClock<Mixer: BlockMixer> {
     sample_rate_hz: NonZeroU32,
     block_size: NonZeroU32,
@@ -16,6 +18,7 @@ pub struct DspClock<Mixer: BlockMixer> {
     next_sequence: u64,
     max_operations: usize,
     operations: Vec<Scheduled>,
+    failure_latched: bool,
     marker: std::marker::PhantomData<Mixer>,
 }
 
@@ -35,6 +38,7 @@ impl<Mixer: BlockMixer> DspClock<Mixer> {
             next_sequence: 0,
             max_operations,
             operations: Vec::new(),
+            failure_latched: false,
             marker: std::marker::PhantomData,
         })
     }
@@ -50,6 +54,8 @@ impl<Mixer: BlockMixer> DspClock<Mixer> {
         target: u64,
         command: DspCommand,
     ) -> Result<(), OfflineError<Mixer::Error>> {
+        self.ensure_active()?;
+
         if target < self.frame {
             return Err(OfflineError::PastFrame);
         }
@@ -73,6 +79,8 @@ impl<Mixer: BlockMixer> DspClock<Mixer> {
 
     /// Returns the next exact sub-block before a command boundary.
     pub fn next_segment(&self, requested: u64) -> Result<u32, OfflineError<Mixer::Error>> {
+        self.ensure_active()?;
+
         let block_end = self
             .frame
             .checked_add(u64::from(self.block_size.get()))
@@ -90,25 +98,37 @@ impl<Mixer: BlockMixer> DspClock<Mixer> {
     }
 
     /// Applies all commands whose target is the current frame.
+    ///
+    /// A mixer rejection terminally fails the clock. The rejected command stays
+    /// queued for diagnosis, but later calls cannot replay it or advance past it.
     pub fn execute_at_current(
         &mut self,
         mixer: &mut Mixer,
     ) -> Result<(), OfflineError<Mixer::Error>> {
+        self.ensure_active()?;
+
         while self
             .operations
             .first()
             .is_some_and(|item| item.frame == self.frame)
         {
-            let scheduled = self.operations.remove(0);
-            mixer
-                .apply_command(scheduled.command)
-                .map_err(OfflineError::Mixer)?;
+            let command = self.operations[0].command;
+
+            if let Err(error) = mixer.apply_command(command) {
+                self.failure_latched = true;
+                return Err(OfflineError::Mixer(error));
+            }
+
+            self.operations.remove(0);
         }
+
         Ok(())
     }
 
     /// Advances without passing an unexecuted operation boundary.
     pub fn advance(&mut self, frames: u32) -> Result<(), OfflineError<Mixer::Error>> {
+        self.ensure_active()?;
+
         let next_frame = self
             .frame
             .checked_add(u64::from(frames))
@@ -123,6 +143,14 @@ impl<Mixer: BlockMixer> DspClock<Mixer> {
         }
 
         self.frame = next_frame;
+        Ok(())
+    }
+
+    fn ensure_active(&self) -> Result<(), OfflineError<Mixer::Error>> {
+        if self.failure_latched {
+            return Err(OfflineError::FailedRenderer);
+        }
+
         Ok(())
     }
 }

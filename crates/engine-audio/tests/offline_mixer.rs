@@ -265,3 +265,53 @@ fn dsp_clock_preserves_pending_boundary_when_advance_would_skip_it() {
     clock.execute_at_current(&mut mixer).unwrap();
     assert_eq!(mixer.render(1).unwrap(), vec![0.25]);
 }
+
+struct MutatingFailureMixer {
+    command_attempts: usize,
+}
+
+impl BlockMixer for MutatingFailureMixer {
+    type Error = &'static str;
+
+    fn channels(&self) -> NonZeroU16 {
+        NonZeroU16::new(1).unwrap()
+    }
+
+    fn render(&mut self, frames: u32) -> Result<Vec<f32>, Self::Error> {
+        Ok(vec![0.0; frames as usize])
+    }
+
+    fn apply_command(&mut self, _command: DspCommand) -> Result<(), Self::Error> {
+        self.command_attempts += 1;
+        Err("command partially applied")
+    }
+}
+
+#[test]
+fn dsp_clock_latches_partially_applied_command_failure() {
+    let mut clock = DspClock::<MutatingFailureMixer>::new(48_000, 4, 4).unwrap();
+    let mut mixer = MutatingFailureMixer {
+        command_attempts: 0,
+    };
+
+    clock
+        .schedule(0, DspCommand::StartVoice { voice_id: 7 })
+        .unwrap();
+
+    assert_eq!(
+        clock.execute_at_current(&mut mixer),
+        Err(OfflineError::Mixer("command partially applied"))
+    );
+    assert_eq!(mixer.command_attempts, 1);
+    assert_eq!(clock.next_segment(1), Err(OfflineError::FailedRenderer));
+    assert_eq!(clock.advance(1), Err(OfflineError::FailedRenderer));
+    assert_eq!(
+        clock.schedule(0, DspCommand::StopVoice { voice_id: 7 }),
+        Err(OfflineError::FailedRenderer)
+    );
+    assert_eq!(
+        clock.execute_at_current(&mut mixer),
+        Err(OfflineError::FailedRenderer)
+    );
+    assert_eq!(mixer.command_attempts, 1);
+}
