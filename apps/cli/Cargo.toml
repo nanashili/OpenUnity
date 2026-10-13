@@ -6,6 +6,7 @@ rust-version.workspace = true
 publish.workspace = true
 
 [dependencies]
+engine-audio.workspace = true
 engine-scene.workspace = true
 engine-serialization.workspace = true
 engine-runtime.workspace = true

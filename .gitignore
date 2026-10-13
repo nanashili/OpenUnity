@@ -27,6 +27,7 @@
 !/apps/**/
 !/apps/**/Cargo.toml
 !/apps/**/src/**/*.rs
+!/apps/cli/tests/wav_cli_export.rs
 
 # Independent managed compatibility and hosting sources.
 !/managed/

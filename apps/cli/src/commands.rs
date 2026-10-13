@@ -1,5 +1,6 @@
 //! Shared standalone command selection; command modules own preparation and execution.
 
+mod audio_export;
 mod diagnostics;
 mod scene;
 mod script;
@@ -18,6 +19,7 @@ pub fn run() -> Result<(), Box<dyn Error>> {
             Ok(())
         }
         [arg] if arg == "--self-check" => diagnostics::self_check(),
+        [flag, ..] if flag == "--export-wav" => audio_export::run(&args),
         [flag, ..] if flag == "--run-scene" => scene::run(&args),
         [flag, ..] if flag == "--run-timed-scene" => timed_scene::run(&args),
         [flag, ..] if matches!(flag.as_str(), "--run-script" | "--run-gameplay") => {
