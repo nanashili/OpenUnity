@@ -57,10 +57,7 @@ pub(super) fn navigation_agent_transform(
     if transform.parent.is_some() {
         return Err(RuntimeNavigationError::ParentTransformUnsupported);
     }
-    if runtime
-        .physics_attachment_ids()
-        .is_some_and(|(owner_id, _)| owner_id == agent)
-    {
+    if runtime.physics_has_attachment_for_owner(agent) {
         return Err(RuntimeNavigationError::PhysicsAttachmentUnsupported);
     }
 

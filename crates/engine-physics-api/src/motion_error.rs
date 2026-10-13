@@ -15,7 +15,7 @@ pub enum PhysicsError {
     InvalidBody,
     /// The body exists but is in the wrong reservation/publication state.
     InvalidState,
-    /// This world already owns its one reserved or committed body.
+    /// The world body limit is reached or required body storage cannot be reserved.
     Capacity,
     /// A private mutation revision cannot advance without wrapping.
     RevisionExhausted,
@@ -39,7 +39,7 @@ impl fmt::Display for PhysicsError {
             Self::Unsupported => "unsupported collider-free physics profile",
             Self::InvalidBody => "body identity is not owned by this world",
             Self::InvalidState => "body publication state does not permit this operation",
-            Self::Capacity => "the one-body world is occupied",
+            Self::Capacity => "motion-world body limit or storage capacity unavailable",
             Self::RevisionExhausted => "physics mutation revision exhausted",
             Self::StalePlan => "physics step plan is stale or belongs to another world",
         })

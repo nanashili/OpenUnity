@@ -9,30 +9,41 @@ fn fresh_body() -> BodyId {
 }
 
 #[test]
-fn reservations_are_hidden_and_abort_does_not_publish_or_occupy_capacity() {
+fn reservations_are_hidden_and_abort_preserves_other_reservations() {
     let mut world = MotionWorld::default();
     let reserved = fresh_body();
-    let next = fresh_body();
+    let second_reserved = fresh_body();
     world.reserve(reserved, [1.0, 2.0, 3.0]).unwrap();
+    world.reserve(second_reserved, [4.0, 5.0, 6.0]).unwrap();
+
     assert_eq!(world.body(reserved), Err(PhysicsError::InvalidState));
     assert_eq!(world.remove(reserved), Err(PhysicsError::InvalidState));
+    assert_eq!(world.body(second_reserved), Err(PhysicsError::InvalidState));
     assert_eq!(
-        world.reserve(next, [4.0, 5.0, 6.0]),
-        Err(PhysicsError::Capacity)
+        world.remove(second_reserved),
+        Err(PhysicsError::InvalidState)
     );
-    assert_eq!(world.abort(next), Err(PhysicsError::InvalidBody));
+    assert_eq!(world.abort(fresh_body()), Err(PhysicsError::InvalidBody));
 
     let step = world.prepare_step(0.25, [0.0, -4.0, 0.0]).unwrap();
     assert!(step.body().is_none());
+    assert!(step.bodies().next().is_none());
     world.commit_step(step).unwrap();
     assert_eq!(world.body(reserved), Err(PhysicsError::InvalidState));
+    assert_eq!(world.body(second_reserved), Err(PhysicsError::InvalidState));
+
     world.abort(reserved).unwrap();
     assert_eq!(world.body(reserved), Err(PhysicsError::InvalidBody));
 
-    world.reserve(next, [4.0, 5.0, 6.0]).unwrap();
-    world.commit(next).unwrap();
-    assert_eq!(world.body(next).unwrap().position(), [4.0, 5.0, 6.0]);
-    assert_eq!(world.body(next).unwrap().linear_velocity(), [0.0; 3]);
+    let replacement = fresh_body();
+    world.reserve(replacement, [7.0, 8.0, 9.0]).unwrap();
+    world.commit(replacement).unwrap();
+
+    assert_eq!(world.body(replacement).unwrap().position(), [7.0, 8.0, 9.0]);
+    assert_eq!(world.body(replacement).unwrap().linear_velocity(), [0.0; 3]);
+    assert_eq!(world.body(second_reserved), Err(PhysicsError::InvalidState));
+    world.abort(second_reserved).unwrap();
+    assert_eq!(world.body(second_reserved), Err(PhysicsError::InvalidBody));
 }
 
 #[test]
@@ -40,28 +51,44 @@ fn committed_body_requires_matching_identity_and_retirement_invalidates_reads() 
     let mut world = MotionWorld::default();
     let body = fresh_body();
     let other = fresh_body();
+    let absent = fresh_body();
+    let replacement = fresh_body();
+
     world.reserve(body, [1.0, 2.0, 3.0]).unwrap();
-    assert_eq!(world.commit(other), Err(PhysicsError::InvalidBody));
+    assert_eq!(world.commit(absent), Err(PhysicsError::InvalidBody));
     world.commit(body).unwrap();
-    let before = world.body(body).unwrap();
 
     assert_eq!(world.commit(body), Err(PhysicsError::InvalidState));
     assert_eq!(world.abort(body), Err(PhysicsError::InvalidState));
-    assert_eq!(world.reserve(other, [0.0; 3]), Err(PhysicsError::Capacity));
+
+    world.reserve(other, [0.0; 3]).unwrap();
+    world.commit(other).unwrap();
+    let other_before = world.body(other).unwrap();
+
+    world
+        .set_body(body, BodyState::new([9.0; 3]).unwrap())
+        .unwrap();
+    let before = world.body(body).unwrap();
+    assert_eq!(world.body(other).unwrap(), other_before);
+
     assert_eq!(
-        world.set_body(other, BodyState::new([9.0; 3]).unwrap()),
+        world.set_body(absent, BodyState::new([9.0; 3]).unwrap()),
         Err(PhysicsError::InvalidBody)
     );
-    assert_eq!(world.remove(other), Err(PhysicsError::InvalidBody));
+    assert_eq!(world.remove(absent), Err(PhysicsError::InvalidBody));
     assert_eq!(world.body(body).unwrap(), before);
+    assert_eq!(world.body(other).unwrap(), other_before);
 
     world.remove(body).unwrap();
     assert_eq!(world.body(body), Err(PhysicsError::InvalidBody));
     assert_eq!(world.remove(body), Err(PhysicsError::InvalidBody));
-    world.reserve(other, [7.0, 8.0, 9.0]).unwrap();
-    world.commit(other).unwrap();
+
+    world.reserve(replacement, [7.0, 8.0, 9.0]).unwrap();
+    world.commit(replacement).unwrap();
+
     assert_eq!(world.body(body), Err(PhysicsError::InvalidBody));
-    assert_eq!(world.body(other).unwrap().position(), [7.0, 8.0, 9.0]);
+    assert_eq!(world.body(other).unwrap(), other_before);
+    assert_eq!(world.body(replacement).unwrap().position(), [7.0, 8.0, 9.0]);
 }
 
 #[test]

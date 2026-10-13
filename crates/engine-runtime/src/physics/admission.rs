@@ -7,12 +7,7 @@ use crate::{Runtime, RuntimeError};
 impl Runtime {
     /// Reject fixed stepping once a body has been committed.
     pub(crate) fn physics_fixed_admission(&self) -> Result<(), RuntimeError> {
-        let fixed_body = self
-            .physics
-            .attachment
-            .is_some_and(|attachment| attachment.committed);
-
-        if self.physics.mode == SimulationMode::Fixed && fixed_body {
+        if self.physics.mode == SimulationMode::Fixed && self.physics.has_committed_attachments() {
             return Err(RuntimeError::PhysicsUnsupported);
         }
 

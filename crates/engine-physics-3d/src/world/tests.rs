@@ -14,17 +14,15 @@ fn fresh_body() -> BodyId {
 }
 
 fn reserved_state(world: &MotionWorld, id: BodyId) -> BodyState {
-    let Some(BodySlot::Reserved(record)) = world.slot else {
-        panic!("expected a reserved body slot");
-    };
-
-    assert_eq!(record.id, id);
-    record.state
+    world
+        .reserved_body(id)
+        .expect("expected a reserved body slot")
+        .state
 }
 
 fn assert_empty_at_revision(world: &MotionWorld, id: BodyId, revision: u64) {
     assert_eq!(world.revision, revision);
-    assert!(world.slot.is_none());
+    assert!(world.registry.is_empty());
     assert_eq!(world.body(id), Err(PhysicsError::InvalidBody));
 }
 
@@ -62,9 +60,12 @@ fn reservation_checks_capacity_before_invalid_pose_values() {
     let occupied_id = fresh_body();
     let rejected_id = fresh_body();
 
-    world
-        .reserve(occupied_id, POSITION)
-        .expect("first body should reserve capacity");
+    world.reserve(occupied_id, POSITION).unwrap();
+    for _ in 1..crate::MAX_MOTION_BODIES {
+        world
+            .reserve(fresh_body(), POSITION)
+            .expect("each body below the limit should reserve capacity");
+    }
 
     let original = reserved_state(&world, occupied_id);
 
@@ -77,7 +78,10 @@ fn reservation_checks_capacity_before_invalid_pose_values() {
         Err(PhysicsError::Capacity)
     );
 
-    assert_eq!(world.revision, 1);
+    assert_eq!(
+        world.revision,
+        u64::try_from(crate::MAX_MOTION_BODIES).unwrap()
+    );
     assert_eq!(reserved_state(&world, occupied_id), original);
 }
 

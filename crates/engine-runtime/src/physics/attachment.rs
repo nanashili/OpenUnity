@@ -1,67 +1,28 @@
-//! Runtime ownership of the one native motion body and its Transform link.
+//! Reserve, publish, abort, and resolve Runtime physics attachments.
 //!
-//! This module is a composition candidate.  Object identity and publication
-//! belong to `engine_object`; body state and reservation revisions belong to
-//! `engine_physics_3d`.  The attachment stores only the relationship between
-//! those owners and the property metadata needed for Transform synchronization.
+//! Object identity and publication belong to `engine_object`; body state and
+//! reservation revisions belong to `engine_physics_3d`. This module composes
+//! those owners while keeping every lookup keyed by the exact body ID.
+//! Multi-body admission follows the accepted OpenUnity policy
+//! `INFRA-PHYSICS-MOTION-MULTI-001`; it does not extend the Unity observation
+//! recorded by `ENGINE-PHYSICS-MOTION-001`.
 
 use engine_identifiers::ObjectId;
 use engine_math::{Quaternion, Vector};
-use engine_physics_3d::{AabbQueryWorld, MotionWorld};
-use engine_physics_api::{BodyId, BodyState, SimulationMode};
+use engine_physics_api::{BodyId, BodyState};
 
 use crate::{Runtime, RuntimeError};
 
+pub(super) use super::attachment_registry::PhysicsAttachment;
 use super::body_properties::BodyProperties;
 
-/// Private relationship between a Rigidbody identity and its owner Transform.
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
-pub(super) struct PhysicsAttachment {
-    pub(super) body_id: ObjectId,
-    pub(super) owner_id: ObjectId,
-    pub(super) transform_id: ObjectId,
-    pub(super) committed: bool,
-    pub(super) properties: BodyProperties,
-}
-
-impl PhysicsAttachment {
-    pub(super) fn reserved(
-        body_id: ObjectId,
-        owner_id: ObjectId,
-        transform_id: ObjectId,
-        properties: BodyProperties,
-    ) -> Self {
-        Self {
-            body_id,
-            owner_id,
-            transform_id,
-            committed: false,
-            properties,
-        }
-    }
-
-    pub(super) fn is_dirty(self) -> bool {
-        self.properties.is_position_dirty()
-    }
-}
-
-/// Runtime-owned physics state added to `Runtime` by the context patch.
-#[derive(Debug, Default)]
-pub(crate) struct PhysicsState {
-    pub(super) world: MotionWorld,
-    pub(super) query: AabbQueryWorld,
-    pub(super) mode: SimulationMode,
-    pub(super) attachment: Option<PhysicsAttachment>,
-}
-
 impl Runtime {
-    /// Reserve a hidden Rigidbody and the matching backend body atomically.
+    /// Reserve a hidden Rigidbody and matching backend body.
     ///
-    /// Callers perform lifecycle, staging, activity and profile admission
-    /// before this operation.  The object reservation is deliberately made
-    /// before backend reservation so the backend receives an owned identity.
-    /// If backend reservation fails, the exact object reservation is removed
-    /// synchronously and no attachment escapes the failed operation.
+    /// Owner uniqueness and Runtime/world capacity are preflighted before
+    /// object identity is allocated. The reservation guard removes the hidden
+    /// object identity if backend validation fails. The attachment is inserted
+    /// only after both object and backend owners hold the reservation.
     pub(super) fn reserve_physics_body(
         &mut self,
         owner_id: ObjectId,
@@ -69,95 +30,108 @@ impl Runtime {
         position: Vector,
         rotation: Quaternion,
     ) -> Result<ObjectId, RuntimeError> {
-        if self.physics.attachment.is_some() {
-            return Err(RuntimeError::PhysicsUnsupported);
-        }
+        let slot = self.physics.prepare_attachment_slot(owner_id)?;
+        self.physics
+            .world
+            .ensure_reservation_capacity()
+            .map_err(RuntimeError::from)?;
 
         let reservation = self.objects.prepare_rigidbody_reservation(owner_id)?;
         let body_id = reservation.body_id();
 
+        self.physics.ensure_body_id_available(body_id)?;
         self.physics
             .world
             .reserve_pose(BodyId::from(body_id), position, rotation)
             .map_err(RuntimeError::from)?;
 
         reservation.commit();
-
-        self.physics.attachment = Some(PhysicsAttachment::reserved(
-            body_id,
-            owner_id,
-            transform_id,
-            BodyProperties::default(),
-        ));
+        self.physics.insert_reserved_attachment(
+            slot,
+            PhysicsAttachment::reserved(body_id, owner_id, transform_id, BodyProperties::default()),
+        );
         Ok(body_id)
     }
 
-    /// Publish the object catalog entry only after backend publication succeeds.
+    /// Publish the owner catalog entry after backend publication succeeds.
     pub(super) fn commit_physics_body(&mut self, body_id: ObjectId) -> Result<(), RuntimeError> {
-        let attachment = self
+        let attachment = self.reserved_attachment(body_id)?;
+        let index = self
             .physics
-            .attachment
-            .as_mut()
+            .attachment_index_by_body(body_id)
             .ok_or(RuntimeError::InvalidObject)?;
-        if attachment.body_id != body_id {
-            return Err(RuntimeError::InvalidObject);
-        }
-        if attachment.committed {
-            return Err(RuntimeError::Lifecycle);
-        }
-
         let publication = self.objects.prepare_rigidbody_publication(body_id)?;
 
         self.physics
             .world
             .commit(BodyId::from(body_id))
             .map_err(RuntimeError::from)?;
+
         publication.commit();
-        attachment.committed = true;
+        self.physics.commit_attachment(index, body_id);
+        debug_assert_eq!(attachment.body_id, body_id);
         Ok(())
     }
 
     /// Abort an unpublished reservation, retaining it if backend abort fails.
     pub(super) fn abort_physics_body(&mut self, body_id: ObjectId) -> Result<(), RuntimeError> {
-        let attachment = self.reserved_attachment(body_id)?;
-        let cleanup = match self.objects.prepare_retirement(&[body_id]) {
-            Ok(cleanup) => cleanup,
-            Err(error) => {
-                return Err(RuntimeError::from(error));
-            }
-        };
-        let abort_result = self.physics.world.abort(BodyId::from(body_id));
-        if let Err(error) = abort_result {
+        self.reserved_attachment(body_id)?;
+        let index = self
+            .physics
+            .attachment_index_by_body(body_id)
+            .ok_or(RuntimeError::InvalidObject)?;
+        let cleanup = self.objects.prepare_retirement(&[body_id])?;
+
+        if let Err(error) = self.physics.world.abort(BodyId::from(body_id)) {
             drop(cleanup);
             return Err(RuntimeError::from(error));
         }
 
         cleanup.commit();
-        self.physics.attachment = None;
-        debug_assert_eq!(attachment.body_id, body_id);
+        self.physics.remove_attachment(index, body_id);
         Ok(())
     }
 
-    /// Read a committed body as an owned state copy.
+    /// Read committed backend state after resolving this exact body ID.
     pub(super) fn read_physics_body(&self, body_id: ObjectId) -> Result<BodyState, RuntimeError> {
-        let attachment = self.ensure_attachment_matches(body_id)?;
+        let attachment = self.physics_attachment(body_id)?;
         if !attachment.committed {
             return Err(RuntimeError::Lifecycle);
         }
+
         self.physics
             .world
             .body(BodyId::from(body_id))
             .map_err(RuntimeError::from)
     }
 
-    pub(super) fn physics_attachment(&self) -> Option<&PhysicsAttachment> {
-        self.physics.attachment.as_ref()
+    pub(super) fn physics_attachment(
+        &self,
+        body_id: ObjectId,
+    ) -> Result<&PhysicsAttachment, RuntimeError> {
+        let attachment = self
+            .physics
+            .attachment_by_body(body_id)
+            .ok_or(RuntimeError::InvalidObject)?;
+
+        if self.objects.kind(body_id)? != crate::ObjectKind::Rigidbody
+            || self.objects.component_gameobject(body_id)? != attachment.owner_id
+            || self.objects.gameobject_transform(attachment.owner_id)? != attachment.transform_id
+        {
+            return Err(RuntimeError::InvalidObject);
+        }
+
+        Ok(attachment)
     }
 
-    pub(crate) fn physics_attachment_ids(&self) -> Option<(ObjectId, ObjectId)> {
+    pub(crate) fn physics_attachment_ids(&self) -> impl Iterator<Item = (ObjectId, ObjectId)> + '_ {
         self.physics
-            .attachment
+            .attachments()
             .map(|attachment| (attachment.owner_id, attachment.body_id))
+    }
+
+    pub(crate) fn physics_has_attachment_for_owner(&self, owner_id: ObjectId) -> bool {
+        self.physics.attachment_by_owner(owner_id).is_some()
     }
 
     /// Preflight a user-authored position write before mutating TransformData.
@@ -165,12 +139,10 @@ impl Runtime {
         &self,
         transform_id: ObjectId,
     ) -> Result<Option<u64>, RuntimeError> {
-        let Some(attachment) = self.physics.attachment else {
+        let Some(attachment) = self.physics.attachment_by_transform(transform_id) else {
             return Ok(None);
         };
-        if attachment.transform_id != transform_id {
-            return Ok(None);
-        }
+
         attachment
             .properties
             .next_authored_revision()
@@ -182,26 +154,13 @@ impl Runtime {
     pub(crate) fn commit_authored_position_write(&mut self, transform_id: ObjectId, revision: u64) {
         let attachment = self
             .physics
-            .attachment
-            .as_mut()
-            .expect("prepared authored write requires an attachment");
-        debug_assert_eq!(attachment.transform_id, transform_id);
+            .attachment_by_transform_mut(transform_id)
+            .expect("prepared authored write retains its exact Transform attachment");
         attachment.properties.commit_authored_revision(revision);
     }
 
-    fn ensure_attachment_matches(
-        &self,
-        body_id: ObjectId,
-    ) -> Result<PhysicsAttachment, RuntimeError> {
-        let attachment = self.physics.attachment.ok_or(RuntimeError::InvalidObject)?;
-        if attachment.body_id != body_id {
-            return Err(RuntimeError::InvalidObject);
-        }
-        Ok(attachment)
-    }
-
     fn reserved_attachment(&self, body_id: ObjectId) -> Result<PhysicsAttachment, RuntimeError> {
-        let attachment = self.ensure_attachment_matches(body_id)?;
+        let attachment = *self.physics_attachment(body_id)?;
         if attachment.committed {
             return Err(RuntimeError::Lifecycle);
         }

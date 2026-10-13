@@ -5,22 +5,41 @@ use std::sync::Arc;
 use engine_math::{Vector, add, finite, scale};
 use engine_physics_api::{BodyId, BodyState, PhysicsError};
 
-use crate::MotionWorld;
-use crate::world::{BodyRecord, BodySlot, WorldProvenance};
+use crate::body_registry::BodyRecord;
+use crate::world::WorldProvenance;
+use crate::{MAX_MOTION_BODIES, MotionWorld};
 
-/// An owned candidate bound to one world/revision, never a caller-forged commit.
+#[derive(Clone, Copy, Debug)]
+struct StepCandidate {
+    slot_index: usize,
+    body: BodyRecord,
+}
+
+/// An owned candidate set bound to one world/revision, never caller-forged.
 #[derive(Debug)]
 pub struct PreparedStep {
     provenance: Arc<WorldProvenance>,
     revision: u64,
-    candidate: Option<BodyRecord>,
+    candidates: Vec<StepCandidate>,
 }
 
 impl PreparedStep {
-    /// Copy the candidate body for composition's Transform preflight/publication.
-    /// Returns None for an empty world or an unpublished reservation.
+    /// Copy the sole candidate for legacy one-body callers.
+    /// Returns None for zero or multiple committed candidates.
     pub fn body(&self) -> Option<(BodyId, BodyState)> {
-        self.candidate.map(|body| (body.id, body.state))
+        if self.candidates.len() != 1 {
+            return None;
+        }
+
+        let body = self.candidates[0].body;
+        Some((body.id, body.state))
+    }
+
+    /// Copy every candidate in ascending positive ObjectId order.
+    pub fn bodies(&self) -> impl Iterator<Item = (BodyId, BodyState)> + '_ {
+        self.candidates
+            .iter()
+            .map(|candidate| (candidate.body.id, candidate.body.state))
     }
 }
 
@@ -31,7 +50,7 @@ impl MotionWorld {
     /// backend validates duration/gravity even when no committed body exists.
     /// # Errors
     /// Returns Unsupported for nonzero angular velocity, Numeric for invalid
-    /// inputs/result overflow, or revision exhaustion.
+    /// inputs/result overflow, Capacity for candidate allocation, or exhaustion.
     pub fn prepare_step(
         &self,
         duration: f32,
@@ -43,36 +62,59 @@ impl MotionWorld {
         }
         finite(&gravity)?;
 
-        let candidate = match self.slot {
-            Some(BodySlot::Committed(body)) => {
-                reject_unsupported_angular_motion(body.state)?;
-                self.next_revision()?;
-                Some(advance(body, duration, gravity)?)
-            }
-            Some(BodySlot::Reserved(_)) | None => None,
-        };
+        for (_, body) in self.registry.committed_records() {
+            reject_unsupported_angular_motion(body.state)?;
+        }
 
-        Ok(PreparedStep {
-            provenance: Arc::clone(&self.provenance),
-            revision: self.revision,
-            candidate,
-        })
+        let candidate_count = self.registry.committed_count();
+        if candidate_count == 0 {
+            return Ok(self.prepared_step(Vec::new()));
+        }
+
+        self.next_revision()?;
+
+        let mut candidates = Vec::new();
+        candidates
+            .try_reserve_exact(candidate_count.min(MAX_MOTION_BODIES))
+            .map_err(|_| PhysicsError::Capacity)?;
+
+        for (slot_index, body) in self.registry.committed_records() {
+            let advanced = advance(body, duration, gravity)?;
+            candidates.push(StepCandidate {
+                slot_index,
+                body: advanced,
+            });
+        }
+
+        Ok(self.prepared_step(candidates))
     }
 
-    /// Publish a matching prepared candidate without fallible work after mutation.
+    /// Publish a matching prepared candidate set without fallible work after mutation.
     /// # Errors
     /// Returns StalePlan for foreign/invalidated plans, or revision exhaustion.
     pub fn commit_step(&mut self, plan: PreparedStep) -> Result<(), PhysicsError> {
         if !Arc::ptr_eq(&self.provenance, &plan.provenance) || self.revision != plan.revision {
             return Err(PhysicsError::StalePlan);
         }
-        if let Some(body) = plan.candidate {
-            let revision = self.next_revision()?;
-
-            self.slot = Some(BodySlot::Committed(body));
-            self.revision = revision;
+        if plan.candidates.is_empty() {
+            return Ok(());
         }
+
+        let revision = self.next_revision()?;
+        for candidate in plan.candidates {
+            self.registry
+                .replace_committed(candidate.slot_index, candidate.body);
+        }
+        self.revision = revision;
         Ok(())
+    }
+
+    fn prepared_step(&self, candidates: Vec<StepCandidate>) -> PreparedStep {
+        PreparedStep {
+            provenance: Arc::clone(&self.provenance),
+            revision: self.revision,
+            candidates,
+        }
     }
 }
 

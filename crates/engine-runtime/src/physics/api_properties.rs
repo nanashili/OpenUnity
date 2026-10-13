@@ -9,7 +9,6 @@ use engine_physics_api::{BodyId, BodyInterpolation, BodyState, SimulationMode};
 
 use super::attachment::PhysicsAttachment;
 use crate::physics::body_properties::{BodyProperty, prepare_property};
-use crate::physics::transform_sync::prepare_sync_transforms;
 use crate::{Runtime, RuntimeError};
 
 impl Runtime {
@@ -39,8 +38,7 @@ impl Runtime {
 
         if matches!(property, BodyProperty::Position(_)) {
             self.physics
-                .attachment
-                .as_mut()
+                .attachment_by_body_mut(body)
                 .expect("admitted body attachment remains live")
                 .properties
                 .acknowledge_authored_revision();
@@ -182,39 +180,12 @@ impl Runtime {
 
     /// Import a dirty Transform into the committed backend body.
     pub fn physics_sync_transforms(&mut self) -> Result<(), RuntimeError> {
-        self.physics_sync_admission()?;
-        let Some(attachment) = self.physics.attachment else {
-            return Ok(());
-        };
-        if !attachment.committed {
-            return Ok(());
-        }
-        self.validate_supported_owner_transform(attachment.owner_id, attachment.transform_id)?;
-        let state = self
-            .physics
-            .world
-            .body(BodyId::from(attachment.body_id))
-            .map_err(RuntimeError::from)?;
-        let position = self.transform(attachment.transform_id)?.position;
-        let (_, candidate) = prepare_sync_transforms(
-            self.physics.mode,
-            Some((state, &attachment.properties)),
-            position,
-        )
-        .map_err(RuntimeError::from)?;
-        let Some(candidate) = candidate else {
-            return Ok(());
-        };
+        let batch = self.prepare_physics_sync_batch()?;
         self.physics
             .world
-            .set_body(BodyId::from(attachment.body_id), candidate)
+            .set_bodies(&batch.body_states)
             .map_err(RuntimeError::from)?;
-        self.physics
-            .attachment
-            .as_mut()
-            .expect("validated committed attachment remains live")
-            .properties
-            .acknowledge_authored_revision();
+        self.commit_physics_sync_acknowledgements(batch);
         Ok(())
     }
 
@@ -231,10 +202,5 @@ impl Runtime {
     // Lifecycle owner seam; mode writes intentionally allow ordinary callbacks.
     fn physics_mode_admission(&self) -> Result<(), RuntimeError> {
         self.validate_physics_mode_access()
-    }
-
-    // Lifecycle/staging owner seam used by empty, reserved, and committed sync.
-    fn physics_sync_admission(&self) -> Result<(), RuntimeError> {
-        self.validate_physics_sync_access()
     }
 }

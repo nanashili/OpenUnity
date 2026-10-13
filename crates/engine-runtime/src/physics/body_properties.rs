@@ -52,6 +52,12 @@ impl BodyProperties {
         self.acknowledged_position_revision = self.authored_position_revision;
     }
 
+    /// Acknowledge only the revision captured by a successful sync batch.
+    pub(crate) fn acknowledge_prepared_revision(&mut self, prepared: u64) {
+        assert_eq!(self.authored_position_revision, prepared);
+        self.acknowledged_position_revision = prepared;
+    }
+
     /// Prepare a backend candidate only when the Transform revision is dirty.
     pub(crate) fn sync_authored_position(
         self,

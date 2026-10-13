@@ -70,10 +70,10 @@ impl Runtime {
 
         // The attachment carries a reserved Rigidbody even before it is
         // published into the owner's component catalog.
-        if let Some((owner_id, body_id)) = self.physics_attachment_ids()
-            && (raw_ids.contains(&owner_id.to_raw()) || raw_ids.contains(&body_id.to_raw()))
-        {
-            raw_ids.insert(body_id.to_raw());
+        for (owner_id, body_id) in self.physics_attachment_ids() {
+            if raw_ids.contains(&owner_id.to_raw()) || raw_ids.contains(&body_id.to_raw()) {
+                raw_ids.insert(body_id.to_raw());
+            }
         }
 
         raw_ids

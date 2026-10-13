@@ -44,16 +44,11 @@ impl Runtime {
         &self,
         body: ObjectId,
     ) -> Result<PhysicsAttachment, RuntimeError> {
-        let attachment = self
-            .physics_attachment()
-            .ok_or(RuntimeError::InvalidObject)?;
-        if attachment.body_id != body {
-            return Err(RuntimeError::InvalidObject);
-        }
+        let attachment = *self.physics_attachment(body)?;
         if attachment.committed {
             return Err(RuntimeError::Lifecycle);
         }
-        Ok(*attachment)
+        Ok(attachment)
     }
 
     fn validate_lifetime_admission(
@@ -99,9 +94,11 @@ impl Runtime {
         if !self.gameobject_active(owner, true)? {
             return Err(RuntimeError::Lifecycle);
         }
-        if let Some(attachment) = self.physics.attachment.filter(|attachment| {
-            attachment.owner_id == owner && attachment.transform_id == transform
-        }) {
+        if let Some(attachment) = self
+            .physics
+            .attachment_by_transform(transform)
+            .filter(|attachment| attachment.owner_id == owner)
+        {
             if self.physics_destruction_requested(attachment.body_id)? {
                 return Err(RuntimeError::Lifecycle);
             }
@@ -153,16 +150,11 @@ impl Runtime {
         &self,
         body: ObjectId,
     ) -> Result<PhysicsAttachment, RuntimeError> {
-        let attachment = self
-            .physics_attachment()
-            .ok_or(RuntimeError::InvalidObject)?;
-        if attachment.body_id != body {
-            return Err(RuntimeError::InvalidObject);
-        }
+        let attachment = *self.physics_attachment(body)?;
         if !attachment.committed {
             return Err(RuntimeError::Lifecycle);
         }
-        Ok(*attachment)
+        Ok(attachment)
     }
 
     fn validate_physics_owner(&self, owner: ObjectId, body: ObjectId) -> Result<(), RuntimeError> {
@@ -180,17 +172,12 @@ impl Runtime {
         transform_id: ObjectId,
         edit: TransformEdit,
     ) -> Result<(), RuntimeError> {
-        let Some(attachment) = self.physics.attachment else {
+        let Some(_attachment) = self.physics.attachment_by_transform(transform_id) else {
             return Ok(());
         };
-        if attachment.transform_id == transform_id {
-            match edit {
-                TransformEdit::Rotation | TransformEdit::Scale => {
-                    return Err(RuntimeError::PhysicsUnsupported);
-                }
-            }
+        match edit {
+            TransformEdit::Rotation | TransformEdit::Scale => Err(RuntimeError::PhysicsUnsupported),
         }
-        Ok(())
     }
 
     pub(crate) fn physics_validate_hierarchy_change(
@@ -198,11 +185,14 @@ impl Runtime {
         child_transform: ObjectId,
         new_parent: Option<ObjectId>,
     ) -> Result<(), RuntimeError> {
-        let Some(attachment) = self.physics.attachment else {
-            return Ok(());
-        };
-        if child_transform == attachment.transform_id || new_parent == Some(attachment.transform_id)
-        {
+        let child_has_body = self
+            .physics
+            .attachment_by_transform(child_transform)
+            .is_some();
+        let parent_has_body =
+            new_parent.is_some_and(|parent| self.physics.attachment_by_transform(parent).is_some());
+
+        if child_has_body || parent_has_body {
             return Err(RuntimeError::PhysicsUnsupported);
         }
         Ok(())

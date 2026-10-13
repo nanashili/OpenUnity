@@ -5,7 +5,6 @@ use crate::{
     math::{self, Quaternion, Vector},
 };
 use engine_object::ObjectId;
-use std::collections::HashMap;
 
 pub(crate) mod authored_pose;
 use authored_pose::TransformEdit;
@@ -184,27 +183,5 @@ impl Runtime {
             _ => return Err(RuntimeError::InvalidKind),
         }
         Ok(())
-    }
-}
-
-impl Runtime {
-    /// Borrow the exact Transform selected for native physics publication.
-    ///
-    /// Runtime physics admission must validate the owning GameObject and body
-    /// attachment before calling this helper.  Keeping that validation here
-    /// prevents the post-backend publication path from performing a fallible
-    /// lookup or silently targeting a different Transform.
-    pub(crate) fn checked_physics_transform_target(
-        transforms: &mut HashMap<ObjectId, TransformData>,
-        transform_id: ObjectId,
-        owner_id: ObjectId,
-    ) -> Result<&mut TransformData, RuntimeError> {
-        let target = transforms
-            .get_mut(&transform_id)
-            .ok_or(RuntimeError::InvalidObject)?;
-        if target.owner != owner_id {
-            return Err(RuntimeError::InvalidObject);
-        }
-        Ok(target)
     }
 }
