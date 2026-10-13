@@ -64,6 +64,20 @@ MeshFilter/MeshRenderer ownership and ordered asset pointers within the supporte
 text grammar. Automatic scene-to-renderer binding and Unity importer-generated
 subobject IDs remain unsupported.
 
+The version-two scene-render route admits bounded serialized Camera records and
+checks that the manifest camera owner matches a Camera's GameObject when those
+records are present. Projection and clear color still come from the explicit
+manifest, including for disabled or perspective source cameras. This retains
+source data; it does not create a UnityEngine.Camera API or choose a camera
+automatically. The legacy scene import routes retain their previous Camera
+rejection behavior. The text parser accepts the documented YAML/TAG header and
+the existing three-line header within its unchanged bounded body grammar.
+
+An independently authored Camera/triangle scene has run through this route on
+macOS Metal: unchanged C# gameplay moved its Transform and changed the captured
+frame after an update. This used explicit asset and projection bindings and is
+OpenUnity integration evidence, not a Unity differential compatibility result.
+
 Engine functionality is the current priority. Editor visual parity comes later.
 
 ## Build from source
