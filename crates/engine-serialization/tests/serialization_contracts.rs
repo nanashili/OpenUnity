@@ -84,11 +84,10 @@ fn exact_output_plan() -> ScenePlan {
 }
 
 #[test]
-fn serialize_plan_emits_canonical_compact_bytes_and_preserves_order() {
-    let mut plan = valid_plan("Root \"quoted\"\\\né");
-    plan.game_objects[0].components = vec![20, 10];
+fn serialize_plan_emits_canonical_compact_bytes_and_preserves_valid_component_order() {
+    let plan = valid_plan("Root \"quoted\"\\\né");
     let expected = concat!(
-        r#"{"schema_version":1,"scene_name":"Root \"quoted\"\\\né","roots":[10],"game_objects":[{"file_id":1,"name":"Root","active":true,"components":[20,10]}],"transforms":["#,
+        r#"{"schema_version":1,"scene_name":"Root \"quoted\"\\\né","roots":[10],"game_objects":[{"file_id":1,"name":"Root","active":true,"components":[10,20]}],"transforms":["#,
         r#"{"file_id":10,"owner":1,"parent":0,"children":[],"local_position":[-0.0,1.5,2.0],"local_rotation":[0.0,0.0,0.0,1.0],"local_scale":[1.0,1.0,1.0]}],"scripts":["#,
         r#"{"file_id":20,"owner":1,"guid":"0123456789abcdef0123456789abcdef","assembly":"Example.Game","type_name":"Example.Behaviour","enabled":true,"execution_order":-4,"fields":[{"name":"target","value":{"kind":"reference","value":10}}]}]}"#
     );
@@ -96,6 +95,52 @@ fn serialize_plan_emits_canonical_compact_bytes_and_preserves_order() {
     assert_eq!(
         serialize_plan(&plan).unwrap(),
         serialize_plan(&plan).unwrap()
+    );
+}
+
+#[test]
+fn serialize_and_parse_preserve_order_after_mandatory_transform() {
+    let mut plan = valid_plan("Component order");
+    plan.scripts.push(ScriptPlan {
+        file_id: 30,
+        owner: 1,
+        guid: "11111111111111111111111111111111".to_owned(),
+        assembly: "Example.Game".to_owned(),
+        type_name: "Example.SecondBehaviour".to_owned(),
+        enabled: true,
+        execution_order: -3,
+        fields: Vec::new(),
+    });
+    plan.game_objects[0].components = vec![10, 30, 20];
+
+    let bytes = serialize_plan(&plan).unwrap();
+    let parsed = parse_plan(&bytes).unwrap();
+
+    assert_eq!(&parsed.game_objects[0].components, &[10, 30, 20]);
+}
+
+#[test]
+fn serialize_and_parse_reject_transform_after_another_component() {
+    let mut reversed = valid_plan("Transform order");
+    reversed.game_objects[0].components = vec![20, 10];
+
+    assert!(
+        serialize_plan(&reversed)
+            .unwrap_err()
+            .to_string()
+            .contains("mandatory Transform must be first component")
+    );
+
+    let valid_bytes = serialize_plan(&valid_plan("Transform order")).unwrap();
+    let valid_json = std::str::from_utf8(&valid_bytes).unwrap();
+    let reversed_json = valid_json.replace(r#""components":[10,20]"#, r#""components":[20,10]"#);
+    assert_ne!(reversed_json, valid_json);
+
+    assert!(
+        parse_plan(reversed_json.as_bytes())
+            .unwrap_err()
+            .to_string()
+            .contains("mandatory Transform must be first component")
     );
 }
 

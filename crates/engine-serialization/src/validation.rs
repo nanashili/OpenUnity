@@ -181,6 +181,11 @@ impl ScenePlan {
             if mandatory != 1 {
                 return Err(SceneError::new("mandatory Transform missing/duplicated"));
             }
+            if !transforms.contains_key(&go.components[0]) {
+                return Err(SceneError::new(
+                    "mandatory Transform must be first component",
+                ));
+            }
         }
         if listed.len() != owner.len() {
             return Err(SceneError::new("unlisted component"));
