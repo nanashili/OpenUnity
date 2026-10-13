@@ -1,0 +1,24 @@
+[package]
+name = "engine-render-wgpu"
+version.workspace = true
+edition.workspace = true
+rust-version = "1.88"
+publish.workspace = true
+
+[features]
+infra-render-001 = []
+
+[dependencies]
+bytemuck.workspace = true
+engine-assets.workspace = true
+engine-math.workspace = true
+engine-render-api.workspace = true
+pollster.workspace = true
+wgpu = { workspace = true, features = ["std", "wgsl", "dx12", "metal", "vulkan", "gles"] }
+
+[dev-dependencies]
+serde.workspace = true
+serde_json.workspace = true
+
+[lints]
+workspace = true

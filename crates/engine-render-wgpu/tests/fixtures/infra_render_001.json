@@ -1,0 +1,148 @@
+{
+  "contract": "INFRA-RENDER-001",
+  "version": "0.1.0",
+  "evidence_class": "DESIGN",
+  "status": "candidate-independent-vectors-not-executed",
+  "base": {
+    "width": 64,
+    "height": 64,
+    "half_height": 2,
+    "near": 1,
+    "far": 9,
+    "clear_rgba8": [0, 0, 0, 255],
+    "camera_position": [0, 0, 0],
+    "camera_rotation_xyzw": [0, 0, 0, 1],
+    "camera_local_scale": [1, 1, 1],
+    "quad_positions": [[-1, -1, 0], [1, -1, 0], [1, 1, 0], [-1, 1, 0]],
+    "quad_indices": [0, 1, 2, 0, 2, 3],
+    "model_position": [0, 0, 3],
+    "model_rotation_xyzw": [0, 0, 0, 1],
+    "model_local_scale": [1, 1, 1],
+    "draws": [{"model_position": [0, 0, 3], "material": "red", "enabled": true}],
+    "red": [255, 0, 0, 255],
+    "blue": [0, 0, 255, 255],
+    "pixel_origin": "top-left",
+    "pixel_coordinate_order": ["x", "y"],
+    "unorm_channel_tolerance": 1,
+    "alpha_tolerance": 0
+  },
+  "recipe_rules": {
+    "inheritance": "Each case inherits base fields; an explicit case field replaces that whole base field. Cases without draws inherit the single red draw. Driver cases mutate that draw owner in the same live scene session.",
+    "scene": "Acceptance constructs a scene plan with separate camera, bound draw and always-active root controller GameObjects and mandatory Transforms; authored positive local IDs must be fixed and recorded by its driver. Every driver MonoBehaviour is attached to that controller, holds a restored reference to its mutation target and remains enabled with active ancestors through the requested captures.",
+    "vectors_only": "Recipes are not production render-manifest payloads or executable test results. The acceptance driver is still pending."
+  },
+  "cases": [
+    {
+      "id": "solid-and-clear",
+      "draws": [{"model_position": [0, 0, 3], "material": "red"}],
+      "pixels": [{"at": [24, 24], "rgba8": [255, 0, 0, 255]}, {"at": [4, 4], "rgba8": [0, 0, 0, 255]}],
+      "expected_rgba_bytes": 16384
+    },
+    {
+      "id": "near-depth-first",
+      "draws": [{"model_position": [0, 0, 3], "material": "red"}, {"model_position": [0, 0, 5], "material": "blue"}],
+      "pixels": [{"at": [24, 24], "rgba8": [255, 0, 0, 255]}]
+    },
+    {
+      "id": "near-depth-last",
+      "draws": [{"model_position": [0, 0, 5], "material": "blue"}, {"model_position": [0, 0, 3], "material": "red"}],
+      "pixels": [{"at": [24, 24], "rgba8": [255, 0, 0, 255]}]
+    },
+    {
+      "id": "equal-depth-last-wins",
+      "draws": [{"model_position": [0, 0, 3], "material": "red"}, {"model_position": [0, 0, 3], "material": "blue"}],
+      "pixels": [{"at": [24, 24], "rgba8": [0, 0, 255, 255]}]
+    },
+    {
+      "id": "camera-translation",
+      "camera_position": [1, 0, 0],
+      "draws": [{"model_position": [0, 0, 3], "material": "red"}],
+      "pixels": [{"at": [8, 24], "rgba8": [255, 0, 0, 255]}, {"at": [40, 24], "rgba8": [0, 0, 0, 255]}]
+    },
+    {
+      "id": "model-reflection",
+      "draws": [{"model_position": [0, 0, 3], "model_local_scale": [-1, 1, 1], "material": "red"}],
+      "pixels": [{"at": [24, 24], "rgba8": [255, 0, 0, 255]}]
+    },
+    {
+      "id": "hierarchy-preserves-shear",
+      "parent_position": [0, 0, 3],
+      "parent_rotation_xyzw": [0, 0, 0.70710677, 0.70710677],
+      "parent_local_scale": [2, 1, 1],
+      "draws": [{"model_position": [0, 0, 0], "model_rotation_xyzw": [0, 0, 0.38268343, 0.9238795], "material": "red"}],
+      "expected_world_affine_columns": [[-0.70710677, 1.4142135, 0], [-0.70710677, -1.4142135, 0], [0, 0, 1], [0, 0, 3]],
+      "affine_absolute_tolerance": 0.00001,
+      "pixels": [{"at": [24, 24], "rgba8": [255, 0, 0, 255]}]
+    },
+    {
+      "id": "row-orientation",
+      "draws": [{"model_position": [0, 1, 3], "model_local_scale": [0.25, 0.25, 1], "material": "red"}],
+      "pixels": [{"at": [30, 15], "rgba8": [255, 0, 0, 255]}, {"at": [30, 48], "rgba8": [0, 0, 0, 255]}]
+    },
+    {
+      "id": "script-update-live-runtime",
+      "driver": "independently authored MonoBehaviour sets localPosition=(1,0,3) in Update of first native frame",
+      "initialize_pixels": [{"at": [20, 24], "rgba8": [255, 0, 0, 255]}],
+      "tick_one_pixels": [{"at": [20, 24], "rgba8": [0, 0, 0, 255]}, {"at": [40, 24], "rgba8": [255, 0, 0, 255]}],
+      "expected_native_frame_after_initialize": 0,
+      "expected_native_frame_after_tick_one": 1
+    },
+    {
+      "id": "script-lateupdate-same-frame",
+      "driver": "Update sets localPosition=(1,0,3); LateUpdate sets localPosition=(-1,0,3) in first frame",
+      "tick_one_pixels": [{"at": [8, 24], "rgba8": [255, 0, 0, 255]}, {"at": [40, 24], "rgba8": [0, 0, 0, 255]}]
+    },
+    {
+      "id": "activity-and-committed-destruction",
+      "driver": "MonoBehaviour on the separate always-active root controller: tick 1 Update calls SetActive(false) on the bound draw owner; tick 2 Update calls Destroy on that same inactive owner. The actual native second frame completes its destruction phase before capture. Controller and its ancestors stay active and its script stays enabled.",
+      "tick_one_pixels": [{"at": [24, 24], "rgba8": [0, 0, 0, 255]}],
+      "tick_two_pixels": [{"at": [24, 24], "rgba8": [0, 0, 0, 255]}],
+      "expected_tick_one_snapshot_status": "AliveInactive",
+      "expected_tick_two_snapshot_status": "Dead"
+    },
+    {
+      "id": "clip-outside-near-and-far",
+      "draws": [{"model_position": [0, 0, 0.5], "material": "red"}, {"model_position": [0, 0, 10], "material": "blue"}],
+      "pixels": [{"at": [24, 24], "rgba8": [0, 0, 0, 255]}]
+    },
+    {
+      "id": "triangle-crosses-near",
+      "quad_positions": [[-1, -1, 0], [1, -1, 2], [0, 1, 2]],
+      "quad_indices": [0, 1, 2],
+      "draws": [{"model_position": [0, 0, 0], "material": "red"}],
+      "expected_clipped_camera_polygon": [[-0.5, 0, 1], [0, -1, 1], [1, -1, 2], [0, 1, 2]],
+      "pixels": [{"at": [24, 40], "rgba8": [0, 0, 0, 255]}, {"at": [36, 32], "rgba8": [255, 0, 0, 255]}],
+      "oracle": "Pixel centers map to camera x/y (-0.46875,-0.53125) with original-triangle interpolated z=0.765625 and (0.28125,-0.03125) with z=1.765625. The first is clipped by near=1; the second survives. Both lie strictly inside the original projected triangle."
+    },
+    {
+      "id": "triangle-crosses-far",
+      "quad_positions": [[-1, -1, 10], [1, -1, 8], [0, 1, 8]],
+      "quad_indices": [0, 1, 2],
+      "draws": [{"model_position": [0, 0, 0], "material": "red"}],
+      "expected_clipped_camera_polygon": [[-0.5, 0, 9], [0, -1, 9], [1, -1, 8], [0, 1, 8]],
+      "pixels": [{"at": [24, 40], "rgba8": [0, 0, 0, 255]}, {"at": [36, 32], "rgba8": [255, 0, 0, 255]}],
+      "oracle": "Pixel centers map to camera x/y (-0.46875,-0.53125) with original-triangle interpolated z=9.234375 and (0.28125,-0.03125) with z=8.234375. The first is clipped by far=9; the second survives. Both lie strictly inside the original projected triangle."
+    },
+    {
+      "id": "unsupported-camera-scale",
+      "camera_local_scale": [2, 1, 1],
+      "expected_error": "UnsupportedCamera",
+      "expected_gpu_submissions": 0,
+      "expected_success_receipt": false
+    },
+    {
+      "id": "invalid-mesh-index",
+      "quad_indices": [0, 1, 4],
+      "expected_error": "InvalidAssetReference",
+      "expected_session_creations": 0,
+      "expected_gpu_submissions": 0
+    },
+    {
+      "id": "camera-destroyed",
+      "driver": "destroy camera owner and complete destruction boundary",
+      "expected_snapshot_status": "Dead",
+      "expected_error": "CameraUnavailable",
+      "expected_success_receipt": false
+    }
+  ]
+}
