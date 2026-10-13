@@ -2,13 +2,13 @@
 
 pub(crate) mod arguments;
 
-mod error;
-mod execution;
-mod geometry;
+pub(crate) mod error;
+pub(crate) mod execution;
+pub(crate) mod geometry;
 mod receipt;
-mod rendering;
-mod scene;
-mod simulation;
-mod snapshot;
+pub(crate) mod rendering;
+pub(crate) mod scene;
+pub(crate) mod simulation;
+pub(crate) mod snapshot;
 
 pub(crate) use execution::run;

@@ -12,13 +12,13 @@ const USAGE: &str = "usage: --physics-scene <2d|3d> <steps:60..600> <width> <hei
 
 /// Dimension selected for the independently-authored native collision scene.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
-pub(super) enum Dimension {
+pub(crate) enum Dimension {
     TwoD,
     ThreeD,
 }
 
 impl Dimension {
-    pub(super) const fn name(self) -> &'static str {
+    pub(crate) const fn name(self) -> &'static str {
         match self {
             Self::TwoD => "2d",
             Self::ThreeD => "3d",
@@ -65,14 +65,18 @@ impl Arguments {
     }
 }
 
-fn parse_dimension(value: &str) -> Result<Dimension, PhysicsSceneError> {
+pub(crate) fn dimension_from_token(value: &str) -> Option<Dimension> {
     match value {
-        "2d" => Ok(Dimension::TwoD),
-        "3d" => Ok(Dimension::ThreeD),
-        _ => Err(PhysicsSceneError::new(format!(
-            "invalid physics dimension `{value}`; {USAGE}"
-        ))),
+        "2d" => Some(Dimension::TwoD),
+        "3d" => Some(Dimension::ThreeD),
+        _ => None,
     }
+}
+
+fn parse_dimension(value: &str) -> Result<Dimension, PhysicsSceneError> {
+    dimension_from_token(value).ok_or_else(|| {
+        PhysicsSceneError::new(format!("invalid physics dimension `{value}`; {USAGE}"))
+    })
 }
 
 fn parse_steps(value: &str) -> Result<usize, PhysicsSceneError> {
@@ -99,12 +103,18 @@ fn parse_unsigned(field: &str, value: &str) -> Result<u32, PhysicsSceneError> {
         .map_err(|_| PhysicsSceneError::new(format!("{field} is outside the supported range")))
 }
 
-fn parse_policy(value: &str) -> Result<AdapterPolicy, PhysicsSceneError> {
+pub(crate) fn policy_from_token(value: &str) -> Option<AdapterPolicy> {
     match value {
-        "hardware" => Ok(AdapterPolicy::Hardware),
-        "software" => Ok(AdapterPolicy::Software),
-        _ => Err(PhysicsSceneError::new(format!(
-            "adapter policy must be `hardware` or `software`; {USAGE}"
-        ))),
+        "hardware" => Some(AdapterPolicy::Hardware),
+        "software" => Some(AdapterPolicy::Software),
+        _ => None,
     }
+}
+
+fn parse_policy(value: &str) -> Result<AdapterPolicy, PhysicsSceneError> {
+    policy_from_token(value).ok_or_else(|| {
+        PhysicsSceneError::new(format!(
+            "adapter policy must be `hardware` or `software`; {USAGE}"
+        ))
+    })
 }

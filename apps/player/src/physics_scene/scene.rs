@@ -29,7 +29,7 @@ pub(super) struct BodyDefinition {
 }
 
 /// The live native runtime and its two admitted collision bodies.
-pub(super) struct RuntimeScene {
+pub(crate) struct RuntimeScene {
     pub(super) runtime: Runtime,
     pub(super) dimension: Dimension,
     pub(super) floor: BodyDefinition,
@@ -37,7 +37,7 @@ pub(super) struct RuntimeScene {
 }
 
 impl RuntimeScene {
-    pub(super) fn create(dimension: Dimension) -> Result<Self, PhysicsSceneError> {
+    pub(crate) fn create(dimension: Dimension) -> Result<Self, PhysicsSceneError> {
         let mut runtime = Runtime::default();
 
         select_dimension(&mut runtime, dimension)?;
@@ -53,6 +53,20 @@ impl RuntimeScene {
             floor,
             dynamic,
         })
+    }
+
+    pub(crate) const fn dimension(&self) -> Dimension {
+        self.dimension
+    }
+
+    pub(crate) fn body_count(&self) -> usize {
+        self.runtime.physics_scene_body_count()
+    }
+
+    pub(crate) fn step_fixed(&mut self) -> Result<(), PhysicsSceneError> {
+        self.runtime
+            .physics_scene_step(super::simulation::FIXED_TIMESTEP_SECONDS)
+            .map_err(|error| PhysicsSceneError::debug("advance native collision scene", error))
     }
 }
 

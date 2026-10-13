@@ -80,7 +80,7 @@ fn execute_scene(
     Ok(report)
 }
 
-fn cleanup_scene(scene: &mut RuntimeScene, renderer: CleanupResult) -> CleanupOutcome {
+pub(crate) fn cleanup_scene(scene: &mut RuntimeScene, renderer: CleanupResult) -> CleanupOutcome {
     let dynamic = scene.runtime.physics_scene_remove_body(scene.dynamic.owner);
     let floor = scene.runtime.physics_scene_remove_body(scene.floor.owner);
     let remaining_bodies = scene.runtime.physics_scene_body_count();

@@ -7,7 +7,7 @@ const DYNAMIC_RGBA8: [u8; 4] = [224, 72, 48, 255];
 const FLOOR_RGBA8: [u8; 4] = [88, 112, 136, 255];
 
 /// Build a unit mesh and opaque materials for the selected physics profile.
-pub(super) fn create_assets(dimension: Dimension) -> Result<RenderAssets, PhysicsSceneError> {
+pub(crate) fn create_assets(dimension: Dimension) -> Result<RenderAssets, PhysicsSceneError> {
     let mesh = match dimension {
         Dimension::TwoD => unit_quad()?,
         Dimension::ThreeD => unit_cube()?,

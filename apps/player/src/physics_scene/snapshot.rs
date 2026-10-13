@@ -13,6 +13,7 @@ pub(super) enum CaptureMoment {
     Initial,
     Middle,
     Final,
+    Live,
 }
 
 /// Actual local Transform values read from the live runtime.
@@ -52,6 +53,16 @@ pub(super) struct SceneSnapshot {
     pub(super) bodies: [BodySnapshot; 2],
 }
 
+/// Final state exposed by the live player route after presentation stops.
+#[derive(Clone, Copy, Debug, Serialize)]
+pub(crate) struct DynamicBodyState {
+    pub(crate) transform_position: Vector,
+    pub(crate) solver_position: Vector,
+    pub(crate) solver_rotation: Quaternion,
+    pub(crate) linear_velocity: Vector,
+    pub(crate) is_dynamic: bool,
+}
+
 pub(super) fn capture_scene(
     scene: &RuntimeScene,
     moment: CaptureMoment,
@@ -64,6 +75,22 @@ pub(super) fn capture_scene(
         moment,
         simulation_step,
         bodies: [floor, dynamic],
+    })
+}
+
+pub(crate) fn capture_dynamic_body_state(
+    scene: &RuntimeScene,
+    simulation_step: usize,
+) -> Result<DynamicBodyState, PhysicsSceneError> {
+    let snapshot = capture_scene(scene, CaptureMoment::Live, simulation_step)?;
+    let dynamic = snapshot.bodies[1];
+
+    Ok(DynamicBodyState {
+        transform_position: dynamic.transform.position,
+        solver_position: dynamic.physics.position,
+        solver_rotation: dynamic.physics.rotation,
+        linear_velocity: dynamic.physics.linear_velocity,
+        is_dynamic: dynamic.physics.dynamic,
     })
 }
 

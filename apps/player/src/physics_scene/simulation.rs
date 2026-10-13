@@ -55,10 +55,7 @@ fn capture_timeline(
     snapshots.push(capture_scene(scene, CaptureMoment::Initial, 0)?);
 
     for step in 1..=step_count {
-        scene
-            .runtime
-            .physics_scene_step(FIXED_TIMESTEP_SECONDS)
-            .map_err(|error| PhysicsSceneError::debug("advance native collision scene", error))?;
+        scene.step_fixed()?;
 
         if step == middle_step {
             snapshots.push(capture_scene(scene, CaptureMoment::Middle, step)?);

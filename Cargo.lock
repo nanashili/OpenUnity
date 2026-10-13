@@ -2578,6 +2578,7 @@ dependencies = [
  "engine-assets",
  "engine-math",
  "engine-object",
+ "engine-platform",
  "engine-render-api",
  "engine-render-wgpu",
  "engine-runtime",

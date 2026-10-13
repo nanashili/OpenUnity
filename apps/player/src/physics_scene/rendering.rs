@@ -6,8 +6,9 @@ use crate::render_output::{CallbackResult, RenderOutputPublisher};
 
 use super::arguments::Dimension;
 use super::error::PhysicsSceneError;
+use super::scene::RuntimeScene;
 use super::simulation::SimulationReport;
-use super::snapshot::SceneSnapshot;
+use super::snapshot::{CaptureMoment, SceneSnapshot, capture_scene};
 
 const CAMERA_NEAR: f32 = 0.1;
 const CAMERA_FAR_2D: f32 = 10.0;
@@ -54,6 +55,38 @@ fn build_frame<'assets>(
     assets: &'assets engine_assets::RenderAssets,
     target_size: TargetSize,
 ) -> Result<RenderFrame<'assets>, PhysicsSceneError> {
+    let frame_number = u64::try_from(snapshot.simulation_step)
+        .map_err(|_| PhysicsSceneError::new("simulation step exceeds frame-number range"))?;
+
+    build_frame_with_number(snapshot, dimension, assets, target_size, frame_number)
+}
+
+/// Build one live frame from the current runtime Transform and solver state.
+pub(crate) fn build_live_frame<'assets>(
+    scene: &RuntimeScene,
+    assets: &'assets engine_assets::RenderAssets,
+    target_size: TargetSize,
+    simulation_step: usize,
+    frame_number: u64,
+) -> Result<RenderFrame<'assets>, PhysicsSceneError> {
+    let snapshot = capture_scene(scene, CaptureMoment::Live, simulation_step)?;
+
+    build_frame_with_number(
+        &snapshot,
+        scene.dimension(),
+        assets,
+        target_size,
+        frame_number,
+    )
+}
+
+fn build_frame_with_number<'assets>(
+    snapshot: &SceneSnapshot,
+    dimension: Dimension,
+    assets: &'assets engine_assets::RenderAssets,
+    target_size: TargetSize,
+    frame_number: u64,
+) -> Result<RenderFrame<'assets>, PhysicsSceneError> {
     let camera = create_camera(dimension)?;
 
     let draws = snapshot
@@ -61,9 +94,6 @@ fn build_frame<'assets>(
         .iter()
         .map(|body| build_draw(*body, assets))
         .collect::<Result<Vec<_>, _>>()?;
-    let frame_number = u64::try_from(snapshot.simulation_step)
-        .map_err(|_| PhysicsSceneError::new("simulation step exceeds frame-number range"))?;
-
     RenderFrame::try_new(frame_number, target_size, camera, assets, draws)
         .map_err(|error| PhysicsSceneError::debug("validate physics-scene frame", error))
 }

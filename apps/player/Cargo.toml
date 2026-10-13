@@ -10,6 +10,7 @@ engine-assets.workspace = true
 engine-object.workspace = true
 engine-math.workspace = true
 engine-render-api.workspace = true
+engine-platform.workspace = true
 engine-render-wgpu.workspace = true
 engine-runtime.workspace = true
 engine-scene.workspace = true

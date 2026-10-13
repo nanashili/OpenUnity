@@ -72,9 +72,9 @@ Requirements:
 
 - Rust 1.93.1 (pinned in rust-toolchain.toml) and a native C/C++ linker.
 - .NET SDK 8.0.425, with the patch roll-forward policy in [global.json](global.json).
-- A graphics-capable desktop session to launch the editor.
+- A graphics-capable desktop session to launch the editor or live player.
 
-On Ubuntu, install the editor's native development dependencies:
+On Ubuntu, install the editor and live player's native development dependencies:
 
 ```sh
 sudo apt-get update
@@ -100,6 +100,19 @@ managed scene session and captures its transforms. The physics route runs a
 bounded native 2D or 3D collision scene. Both write PPM frames and a receipt
 containing the actual adapter, draw counts, readback status, and cleanup
 results.
+
+For an interactive native window, run
+`cargo run -p openunity-player -- --live-physics-scene <2d|3d> <hardware|software> [--frames <count>]`.
+The route opens a 960x640 window and presents directly to its WGPU surface.
+Space pauses or resumes fixed-step simulation; Escape or the window close
+control exits. The optional positive frame count exits after that many
+successful present requests. The final JSON summary reports present requests,
+simulation steps, body state, and collision-body cleanup; a present request
+does not imply GPU completion. The scene uses the current Rapier-backed native
+2D/3D collision solver; Unity physics parity remains unverified. Its 3D view
+uses a fixed oblique orthographic camera. This route runs the built-in scene
+only. The live surface path has been runtime-verified on macOS Metal only;
+other desktop window backends remain unverified.
 
 The default build uses independent fallback fonts and UI graphics. A Unity
 installation, extracted Unity resources, or proprietary runtime components are
