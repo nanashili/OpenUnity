@@ -966,6 +966,13 @@ name = "engine-math"
 version = "0.1.0"
 
 [[package]]
+name = "engine-navigation"
+version = "0.1.0"
+dependencies = [
+ "engine-math",
+]
+
+[[package]]
 name = "engine-object"
 version = "0.1.0"
 dependencies = [
