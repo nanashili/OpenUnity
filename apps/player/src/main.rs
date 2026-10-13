@@ -6,6 +6,7 @@ mod render_manifest;
 mod render_output;
 mod render_preflight;
 mod render_scene;
+mod scene_reference_binding;
 
 use std::error::Error;
 use std::process::ExitCode;

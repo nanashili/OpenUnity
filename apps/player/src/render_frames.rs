@@ -111,9 +111,10 @@ fn build_frame<'assets>(
     .map_err(|error| format!("validate camera snapshot: {error:?}"))?;
 
     let draws = build_draws(manifest, &rows)?;
+    let assets = manifest.assets();
     let frame_number = u64::try_from(snapshot.frame())
         .map_err(|_| "snapshot frame number is negative".to_string())?;
-    RenderFrame::try_new(frame_number, target_size, camera, manifest.assets(), draws)
+    RenderFrame::try_new(frame_number, target_size, camera, assets, draws)
         .map_err(|error| format!("validate render frame: {error:?}"))
 }
 

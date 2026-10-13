@@ -5,6 +5,7 @@
 //! receives borrowed array fragments without a player-side value tree, clone,
 //! or synthetic JSON document.
 
+use crate::scene_reference_binding::{PointerResolutionError, ResolvedSceneBindings};
 use engine_assets::RenderAssets;
 
 const MAX_BYTES: usize = 16 * 1024 * 1024;
@@ -31,11 +32,17 @@ pub struct DrawBinding {
 }
 
 /// Complete validated render manifest, including immutable asset values.
-#[derive(Clone, Debug)]
+#[derive(Debug)]
 pub struct RenderManifest {
-    assets: RenderAssets,
+    resources: RenderResources,
     camera: CameraBinding,
     draws: Vec<DrawBinding>,
+}
+
+#[derive(Debug)]
+enum RenderResources {
+    Direct(RenderAssets),
+    Catalog(ResolvedSceneBindings),
 }
 
 /// Manifest input or validation failure.
@@ -53,6 +60,30 @@ pub enum RenderManifestError {
     InvalidField(&'static str),
     /// The independently owned mesh/material parser rejected its asset subset.
     Asset(String),
+    /// Scene-extracted references could not be paired or resolved by the catalog.
+    Reference(PointerResolutionError),
+}
+
+pub(super) fn version2_preflight_error(error: RenderManifestError) -> String {
+    match error {
+        RenderManifestError::Reference(error) => error.to_string(),
+        RenderManifestError::Limit(limit) => {
+            format!("parse render manifest: limit exceeded for {limit}")
+        }
+        RenderManifestError::Parse(detail) => {
+            format!("parse render manifest: {detail}")
+        }
+        RenderManifestError::DuplicateKey => "parse render manifest: duplicate object key".into(),
+        RenderManifestError::UnknownField(scope) => {
+            format!("parse render manifest: unknown field in {scope}")
+        }
+        RenderManifestError::InvalidField(field) => {
+            format!("parse render manifest: invalid field {field}")
+        }
+        RenderManifestError::Asset(detail) => {
+            format!("parse render manifest assets: {detail}")
+        }
+    }
 }
 
 impl RenderManifest {
@@ -79,7 +110,7 @@ impl RenderManifest {
         let draws = resolve_draws(draws, &assets)?;
 
         Ok(Self {
-            assets,
+            resources: RenderResources::Direct(assets),
             camera,
             draws,
         })
@@ -87,7 +118,10 @@ impl RenderManifest {
 
     /// Return the independently validated mesh and material values.
     pub fn assets(&self) -> &RenderAssets {
-        &self.assets
+        match &self.resources {
+            RenderResources::Direct(assets) => assets,
+            RenderResources::Catalog(bindings) => bindings.catalog().render_assets(),
+        }
     }
 
     /// Return the validated camera owner and orthographic parameters.
@@ -173,6 +207,10 @@ impl DrawBinding {
 
 mod parsing;
 use parsing::{parse_camera, parse_draws, parse_manifest, resolve_draws};
+
+mod scene_bound;
+pub(crate) mod version_selection;
+mod versioned;
 
 #[cfg(test)]
 #[path = "render_manifest_tests.rs"]
