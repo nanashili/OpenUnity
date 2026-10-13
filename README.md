@@ -26,7 +26,7 @@ API and .NET hosting.
 | Scenes and assets | Bounded Unity text-scene import, metadata/GUID indexing, and supported serialized fields and object references. |
 | Project compilation | Explicit authored C# source compilation and headless scene launch. |
 | Rendering | Offscreen orthographic triangle rendering with explicit mesh/material bindings, depth testing, and GPU readback. Flat 2D and 3D-depth samples have run on Metal. |
-| Physics | One collider-free 3D dynamic body per runtime, scripted translation steps, gravity, finite velocity storage, and initial authored orientation. Independent native AABB segment/overlap queries support explicit world-space volumes and owner lifetime. |
+| Physics | Up to 256 collider-free 3D dynamic bodies per runtime, one per supported owner, with scripted translation steps, gravity, finite velocity storage, and initial authored orientation. Independent native AABB segment/overlap queries support explicit world-space volumes and owner lifetime. |
 | Animation and audio | Independent native clip/state sampling and offline audio mixing; general Unity API and content compatibility remain unverified. |
 | Editor | Native authoring UI with hierarchy, inspector, project browser, console, transform markers, undo/redo, and independent scene persistence. |
 
@@ -40,6 +40,12 @@ unsupported.
 Native query volumes are a separate foundation with a 256-volume limit per
 runtime. They do not follow Transforms or expose Unity Collider/Physics.Raycast
 APIs, and have no verified Unity query compatibility.
+
+Multi-body motion has passed native integration, C ABI, and standalone C#
+capacity/lifetime checks. Failed batch steps preserve body and Transform state.
+This is a bounded independent extension; Unity reference comparisons cover the
+earlier single-body fixtures. Automatic physics scheduling, nonzero angular
+integration, contacts, and general Unity physics parity remain unsupported.
 
 The native asset catalog resolves up to 256 explicit GUID/local-file-ID bindings
 to typed meshes and unlit materials. Scene reference extraction separately retains
