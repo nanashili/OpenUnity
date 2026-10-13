@@ -9,8 +9,9 @@ pipeline. The compatibility baseline is **Unity 7000.0.0a8**, build
 
 This is an early implementation. Full Unity compatibility is the long-term goal;
 current support covers bounded parts of the object model, transforms, lifecycle,
-and scene serialization. Native systems are written in Rust. Independently
-implemented C# assemblies provide the supported gameplay API and .NET hosting.
+scene serialization, rendering, and manual physics. Native systems are written
+in Rust. Independently implemented C# assemblies provide the supported gameplay
+API and .NET hosting.
 
 [Build status and downloads](https://github.com/nanashili/OpenUnity/actions/workflows/build.yml)
 
@@ -24,13 +25,17 @@ implemented C# assemblies provide the supported gameplay API and .NET hosting.
 | C# gameplay | Independent .NET hosting and a growing subset of UnityEngine APIs. |
 | Scenes and assets | Bounded Unity text-scene import, metadata/GUID indexing, and supported serialized fields and object references. |
 | Project compilation | Explicit authored C# source compilation and headless scene launch. |
+| Rendering | Offscreen orthographic triangle rendering with explicit mesh/material bindings, depth testing, and GPU readback. Flat 2D and 3D-depth samples have run on Metal. |
+| Physics | One collider-free 3D dynamic body per runtime, scripted translation steps, gravity, finite velocity storage, and initial authored orientation. |
+| Animation and audio | Independent native clip/state sampling and offline audio mixing; general Unity API and content compatibility remain unverified. |
 | Editor | Native authoring UI with hierarchy, inspector, project browser, console, transform markers, undo/redo, and independent scene persistence. |
 
-General Unity project import, public SceneManager compatibility, game rendering,
-physics, audio, animation, and complete UnityEditor APIs remain unimplemented or
-unverified. The editor viewport currently displays authoring markers; it does not
-render a game scene. Editor Play mode and general Unity project builds are not
-supported yet.
+General Unity project import, public SceneManager compatibility, perspective
+rendering, serialized Camera/MeshRenderer import, Physics2D, collision response,
+and complete UnityEditor APIs remain unimplemented or unverified. Current scene
+rendering uses a separate bounded render manifest. The editor viewport displays
+authoring markers; Editor Play mode and general Unity project builds remain
+unsupported.
 
 Engine functionality is the current priority. Editor visual parity comes later.
 
@@ -62,7 +67,10 @@ cargo run -p openunity-editor --release --locked
 
 The player self-check exercises native object identity and lifetime. It is an
 infrastructure check, not a Unity compatibility test. Run the player without
-arguments for its developer hosting and scene-loading commands.
+arguments or with `--help` for its developer hosting, scene-loading, and
+`--render-scene` commands. That render route loads one managed scene session,
+captures its transforms, and writes PPM frames plus a receipt containing the
+actual adapter, draw counts, readback status, and cleanup results.
 
 The default build uses independent fallback fonts and UI graphics. A Unity
 installation, extracted Unity resources, or proprietary runtime components are
