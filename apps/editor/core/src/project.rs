@@ -3,9 +3,13 @@
 use std::path::PathBuf;
 
 mod discovery;
+mod index;
 mod model;
 mod opening;
 
+use index::ProjectIndex;
+
+pub use index::ProjectSnapshotId;
 pub use model::{
     MAX_PROJECT_DEPTH, MAX_PROJECT_ENTRIES, MAX_PROJECT_VERSION_BYTES, ProjectDiagnostic,
     ProjectDiagnosticKind, ProjectEntry, ProjectEntryKind, ProjectError,
@@ -18,6 +22,8 @@ pub struct Project {
     editor_version: String,
     entries: Vec<ProjectEntry>,
     diagnostics: Vec<ProjectDiagnostic>,
+    index: ProjectIndex,
+    snapshot_id: ProjectSnapshotId,
 }
 
 #[cfg(test)]

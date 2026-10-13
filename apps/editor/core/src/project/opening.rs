@@ -5,6 +5,7 @@ use std::io::Read;
 use std::path::{Component, Path, PathBuf};
 
 use super::discovery::discover_assets;
+use super::index::{ProjectIndex, ProjectSnapshotId};
 use super::{MAX_PROJECT_VERSION_BYTES, Project, ProjectDiagnostic, ProjectEntry, ProjectError};
 
 impl Project {
@@ -13,54 +14,18 @@ impl Project {
     /// paths. Unsupported asset entries are omitted and diagnosed. Concurrent
     /// hostile filesystem mutation is outside this reader's guarantee.
     pub fn open(path: impl AsRef<Path>) -> Result<Self, ProjectError> {
-        let supplied = path.as_ref();
-        if supplied.as_os_str().is_empty()
-            || supplied
-                .components()
-                .any(|part| matches!(part, Component::ParentDir))
-        {
-            return Err(error(
-                supplied,
-                "an explicit root without parent traversal is required",
-            ));
-        }
-        let absolute = if supplied.is_absolute() {
-            supplied.to_path_buf()
-        } else {
-            std::env::current_dir()
-                .map_err(|e| error(supplied, e.to_string()))?
-                .join(supplied)
-        };
-        let mut component_path = PathBuf::new();
-        for component in absolute.components() {
-            component_path.push(component.as_os_str());
-            let metadata = fs::symlink_metadata(&component_path)
-                .map_err(|e| error(&component_path, e.to_string()))?;
-            if metadata.file_type().is_symlink() {
-                return Err(error(
-                    &component_path,
-                    "symlink root components are unsupported",
-                ));
-            }
-        }
-        let root = fs::canonicalize(&absolute).map_err(|e| error(&absolute, e.to_string()))?;
-        if !root.is_dir() {
-            return Err(error(&root, "the project root must be a directory"));
-        }
-        required_path(&root, Path::new("Assets"), true)?;
-        required_path(&root, Path::new("ProjectSettings"), true)?;
-        let version_path = required_path(
-            &root,
-            Path::new("ProjectSettings/ProjectVersion.txt"),
-            false,
-        )?;
-        let editor_version = read_version(&version_path)?;
+        let root = resolve_project_root(path.as_ref())?;
+        let editor_version = read_project_version(&root)?;
         let (entries, diagnostics) = discover_assets(&root);
+        let index = build_project_index(&root, &entries)?;
+
         Ok(Self {
             root,
             editor_version,
             entries,
             diagnostics,
+            index,
+            snapshot_id: ProjectSnapshotId::new(),
         })
     }
 
@@ -83,6 +48,76 @@ impl Project {
     pub fn diagnostics(&self) -> &[ProjectDiagnostic] {
         &self.diagnostics
     }
+}
+
+fn resolve_project_root(supplied: &Path) -> Result<PathBuf, ProjectError> {
+    if supplied.as_os_str().is_empty()
+        || supplied
+            .components()
+            .any(|part| matches!(part, Component::ParentDir))
+    {
+        return Err(error(
+            supplied,
+            "an explicit root without parent traversal is required",
+        ));
+    }
+
+    let absolute = if supplied.is_absolute() {
+        supplied.to_path_buf()
+    } else {
+        std::env::current_dir()
+            .map_err(|e| error(supplied, e.to_string()))?
+            .join(supplied)
+    };
+
+    reject_symlink_components(&absolute)?;
+
+    let root = fs::canonicalize(&absolute).map_err(|e| error(&absolute, e.to_string()))?;
+    if !root.is_dir() {
+        return Err(error(&root, "the project root must be a directory"));
+    }
+
+    Ok(root)
+}
+
+fn reject_symlink_components(absolute: &Path) -> Result<(), ProjectError> {
+    let mut component_path = PathBuf::new();
+    for component in absolute.components() {
+        component_path.push(component.as_os_str());
+        let metadata = fs::symlink_metadata(&component_path)
+            .map_err(|e| error(&component_path, e.to_string()))?;
+        if metadata.file_type().is_symlink() {
+            return Err(error(
+                &component_path,
+                "symlink root components are unsupported",
+            ));
+        }
+    }
+
+    Ok(())
+}
+
+fn read_project_version(root: &Path) -> Result<String, ProjectError> {
+    required_path(root, Path::new("Assets"), true)?;
+    required_path(root, Path::new("ProjectSettings"), true)?;
+
+    let version_path = required_path(root, Path::new("ProjectSettings/ProjectVersion.txt"), false)?;
+    read_version(&version_path)
+}
+
+fn build_project_index(
+    root: &Path,
+    entries: &[ProjectEntry],
+) -> Result<ProjectIndex, ProjectError> {
+    ProjectIndex::build(entries).map_err(|entry_index| {
+        let entry_path = root
+            .join("Assets")
+            .join(&entries[entry_index].relative_path);
+        error(
+            &entry_path,
+            "the discovered entry has no parent directory in the project snapshot",
+        )
+    })
 }
 
 fn error(path: &Path, message: impl Into<String>) -> ProjectError {
