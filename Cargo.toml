@@ -7,6 +7,7 @@ members = [
     "crates/engine-scene",
     "crates/engine-assets",
     "crates/engine-input",
+    "crates/engine-audio",
     "crates/engine-render-api",
     "crates/engine-render-wgpu",
     "crates/engine-physics-api",
@@ -35,6 +36,7 @@ engine-serialization = { path = "crates/engine-serialization" }
 engine-scene = { path = "crates/engine-scene" }
 engine-assets = { path = "crates/engine-assets" }
 engine-input = { path = "crates/engine-input" }
+engine-audio = { path = "crates/engine-audio" }
 engine-render-api = { path = "crates/engine-render-api" }
 engine-render-wgpu = { path = "crates/engine-render-wgpu" }
 engine-physics-api = { path = "crates/engine-physics-api" }
