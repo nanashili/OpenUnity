@@ -7,9 +7,11 @@ publish.workspace = true
 
 [dependencies]
 engine-assets.workspace = true
+engine-object.workspace = true
 engine-math.workspace = true
 engine-render-api.workspace = true
 engine-render-wgpu.workspace = true
+engine-runtime.workspace = true
 engine-scene.workspace = true
 engine-scripting-bridge.workspace = true
 engine-serialization.workspace = true

@@ -13,6 +13,7 @@ members = [
     "crates/engine-render-wgpu",
     "crates/engine-animation",
     "crates/engine-physics-api",
+    "crates/engine-physics-2d",
     "crates/engine-physics-3d",
     "crates/engine-scripting-bridge",
     "crates/engine-runtime",
@@ -44,6 +45,7 @@ engine-render-api = { path = "crates/engine-render-api" }
 engine-render-wgpu = { path = "crates/engine-render-wgpu" }
 engine-animation = { path = "crates/engine-animation" }
 engine-physics-api = { path = "crates/engine-physics-api" }
+engine-physics-2d = { path = "crates/engine-physics-2d" }
 engine-physics-3d = { path = "crates/engine-physics-3d" }
 engine-scripting-bridge = { path = "crates/engine-scripting-bridge" }
 engine-runtime = { path = "crates/engine-runtime" }
@@ -56,6 +58,8 @@ bytemuck = { version = "=1.25.2", features = ["derive"] }
 pollster = "=0.4.0"
 sha2 = "=0.10.9"
 wgpu = { version = "=27.0.1", default-features = false }
+rapier2d = { version = "=0.26.1" }
+rapier3d = { version = "=0.26.1" }
 
 [workspace.lints.rust]
 unsafe_op_in_unsafe_fn = "deny"

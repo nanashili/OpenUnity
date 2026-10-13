@@ -9,6 +9,7 @@ publish.workspace = true
 engine-identifiers.workspace = true
 engine-physics-api.workspace = true
 engine-math.workspace = true
+rapier3d.workspace = true
 
 [dev-dependencies]
 engine-identifiers.workspace = true

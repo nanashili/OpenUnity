@@ -13,6 +13,7 @@ engine-object.workspace = true
 engine-physics-api.workspace = true
 engine-input.workspace = true
 engine-identifiers.workspace = true
+engine-physics-2d.workspace = true
 engine-physics-3d.workspace = true
 
 [lints]
