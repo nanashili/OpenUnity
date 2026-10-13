@@ -42,6 +42,8 @@ pub const INVALID_SCENE_PLAN: i32 = -16;
 pub const STAGING_BUSY: i32 = -17;
 /// Physics profile, capacity, mode, synchronization, or hierarchy is unsupported.
 pub const PHYSICS_UNSUPPORTED: i32 = -18;
+/// Invalid query geometry, including inverted bounds or a zero-length ray.
+pub const INVALID_PHYSICS_QUERY: i32 = -19;
 
 pub(crate) fn runtime_error(error: RuntimeError) -> i32 {
     match error {
@@ -58,6 +60,7 @@ pub(crate) fn runtime_error(error: RuntimeError) -> i32 {
         RuntimeError::InvalidScenePlan => INVALID_SCENE_PLAN,
         RuntimeError::StagingBusy => STAGING_BUSY,
         RuntimeError::PhysicsUnsupported => PHYSICS_UNSUPPORTED,
+        RuntimeError::InvalidPhysicsQuery => INVALID_PHYSICS_QUERY,
     }
 }
 

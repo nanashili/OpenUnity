@@ -1036,6 +1036,7 @@ dependencies = [
 name = "engine-runtime-ffi"
 version = "0.1.0"
 dependencies = [
+ "engine-math",
  "engine-object",
  "engine-physics-api",
  "engine-runtime",

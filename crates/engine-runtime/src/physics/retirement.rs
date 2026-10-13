@@ -1,8 +1,8 @@
-//! Motion retirement with borrow-bound ObjectStore cleanup.
+//! Staged motion retirement with borrow-bound ObjectStore cleanup.
 
 use engine_object::{ObjectId, ObjectStore, PreparedObjectRelease, PreparedObjectRetirement};
-use engine_physics_3d::MotionWorld;
-use engine_physics_api::{BodyId, PhysicsError};
+use engine_physics_3d::{MotionWorld, PreparedOwnerRetirement};
+use engine_physics_api::{BodyId, PhysicsError, QueryError};
 
 use super::PhysicsState;
 use super::attachment::PhysicsAttachment;
@@ -29,6 +29,7 @@ pub struct RetirementPlan {
 pub enum RetirementError {
     Object(engine_object::ObjectError),
     Physics(PhysicsError),
+    Query(QueryError),
 }
 
 impl From<engine_object::ObjectError> for RetirementError {
@@ -40,6 +41,12 @@ impl From<engine_object::ObjectError> for RetirementError {
 impl From<PhysicsError> for RetirementError {
     fn from(error: PhysicsError) -> Self {
         Self::Physics(error)
+    }
+}
+
+impl From<QueryError> for RetirementError {
+    fn from(error: QueryError) -> Self {
+        Self::Query(error)
     }
 }
 
@@ -67,8 +74,16 @@ pub fn prepare_retirement(
     ids: &[ObjectId],
 ) -> Result<(), RetirementError> {
     let plan = current_plan(physics, ids);
+    let owners = query_owners(objects, ids)?;
+    let query_guard = physics.query.prepare_owner_retirement(&owners)?;
     let guard = objects.prepare_retirement(ids)?;
-    finish_retirement(guard, physics, plan)
+    finish_retirement(
+        guard,
+        query_guard,
+        &mut physics.world,
+        &mut physics.attachment,
+        plan,
+    )
 }
 
 /// Prepare complete scene release and commit all stores once.
@@ -78,8 +93,16 @@ pub fn prepare_release(
     ids: &[ObjectId],
 ) -> Result<(), RetirementError> {
     let plan = current_plan(physics, ids);
+    let owners = query_owners(objects, ids)?;
+    let query_guard = physics.query.prepare_owner_retirement(&owners)?;
     let guard = objects.prepare_release(ids)?;
-    finish_release(guard, physics, plan)
+    finish_release(
+        guard,
+        query_guard,
+        &mut physics.world,
+        &mut physics.attachment,
+        plan,
+    )
 }
 
 impl Runtime {
@@ -96,6 +119,7 @@ fn map_retirement_error(error: RetirementError) -> RuntimeError {
     match error {
         RetirementError::Object(error) => error.into(),
         RetirementError::Physics(error) => error.into(),
+        RetirementError::Query(error) => error.into(),
     }
 }
 
@@ -103,6 +127,20 @@ fn current_plan(physics: &PhysicsState, ids: &[ObjectId]) -> Option<RetirementPl
     physics.attachment.map(|attachment| {
         plan_attachment(BodyId::from(attachment.body_id), attachment.owner_id, ids)
     })
+}
+
+fn query_owners(objects: &ObjectStore, ids: &[ObjectId]) -> Result<Vec<ObjectId>, RetirementError> {
+    let mut owners = Vec::new();
+
+    for &id in ids {
+        match objects.kind(id) {
+            Ok(engine_object::ObjectKind::GameObject) => owners.push(id),
+            Ok(_) | Err(engine_object::ObjectError::InvalidObject) => {}
+            Err(error) => return Err(RetirementError::Object(error)),
+        }
+    }
+
+    Ok(owners)
 }
 
 trait ObjectGuard {
@@ -123,23 +161,29 @@ impl ObjectGuard for PreparedObjectRelease<'_> {
 
 fn finish_retirement<G: ObjectGuard>(
     guard: G,
-    physics: &mut PhysicsState,
+    query_guard: PreparedOwnerRetirement<'_>,
+    world: &mut MotionWorld,
+    attachment: &mut Option<PhysicsAttachment>,
     plan: Option<RetirementPlan>,
 ) -> Result<(), RetirementError> {
-    retire_backend(&mut physics.world, physics.attachment.as_ref(), plan)?;
+    retire_backend(world, attachment.as_ref(), plan)?;
+    query_guard.commit();
     guard.commit_guard();
-    clear_targeted_attachment(physics, plan);
+    clear_targeted_attachment(attachment, plan);
     Ok(())
 }
 
 fn finish_release(
     guard: PreparedObjectRelease<'_>,
-    physics: &mut PhysicsState,
+    query_guard: PreparedOwnerRetirement<'_>,
+    world: &mut MotionWorld,
+    attachment: &mut Option<PhysicsAttachment>,
     plan: Option<RetirementPlan>,
 ) -> Result<(), RetirementError> {
-    retire_backend(&mut physics.world, physics.attachment.as_ref(), plan)?;
+    retire_backend(world, attachment.as_ref(), plan)?;
+    query_guard.commit();
     guard.commit();
-    clear_targeted_attachment(physics, plan);
+    clear_targeted_attachment(attachment, plan);
     Ok(())
 }
 
@@ -167,8 +211,11 @@ fn retire_backend(
     Ok(())
 }
 
-fn clear_targeted_attachment(physics: &mut PhysicsState, plan: Option<RetirementPlan>) {
+fn clear_targeted_attachment(
+    attachment: &mut Option<PhysicsAttachment>,
+    plan: Option<RetirementPlan>,
+) {
     if plan.is_some_and(|planned| planned.target.is_some()) {
-        physics.attachment = None;
+        *attachment = None;
     }
 }

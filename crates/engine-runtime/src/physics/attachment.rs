@@ -7,7 +7,7 @@
 
 use engine_identifiers::ObjectId;
 use engine_math::{Quaternion, Vector};
-use engine_physics_3d::MotionWorld;
+use engine_physics_3d::{AabbQueryWorld, MotionWorld};
 use engine_physics_api::{BodyId, BodyState, SimulationMode};
 
 use crate::{Runtime, RuntimeError};
@@ -49,6 +49,7 @@ impl PhysicsAttachment {
 #[derive(Debug, Default)]
 pub(crate) struct PhysicsState {
     pub(super) world: MotionWorld,
+    pub(super) query: AabbQueryWorld,
     pub(super) mode: SimulationMode,
     pub(super) attachment: Option<PhysicsAttachment>,
 }

@@ -26,7 +26,7 @@ API and .NET hosting.
 | Scenes and assets | Bounded Unity text-scene import, metadata/GUID indexing, and supported serialized fields and object references. |
 | Project compilation | Explicit authored C# source compilation and headless scene launch. |
 | Rendering | Offscreen orthographic triangle rendering with explicit mesh/material bindings, depth testing, and GPU readback. Flat 2D and 3D-depth samples have run on Metal. |
-| Physics | One collider-free 3D dynamic body per runtime, scripted translation steps, gravity, finite velocity storage, and initial authored orientation. |
+| Physics | One collider-free 3D dynamic body per runtime, scripted translation steps, gravity, finite velocity storage, and initial authored orientation. Independent native AABB segment/overlap queries support explicit world-space volumes and owner lifetime. |
 | Animation and audio | Independent native clip/state sampling and offline audio mixing; general Unity API and content compatibility remain unverified. |
 | Editor | Native authoring UI with hierarchy, inspector, project browser, console, transform markers, undo/redo, and independent scene persistence. |
 
@@ -36,6 +36,10 @@ and complete UnityEditor APIs remain unimplemented or unverified. Current scene
 rendering uses a separate bounded render manifest. The editor viewport displays
 authoring markers; Editor Play mode and general Unity project builds remain
 unsupported.
+
+Native query volumes are a separate foundation with a 256-volume limit per
+runtime. They do not follow Transforms or expose Unity Collider/Physics.Raycast
+APIs, and have no verified Unity query compatibility.
 
 Engine functionality is the current priority. Editor visual parity comes later.
 

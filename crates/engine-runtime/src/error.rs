@@ -1,6 +1,6 @@
 //! Failure taxonomy for the independently implemented runtime contracts.
 
-use engine_physics_api::PhysicsError;
+use engine_physics_api::{PhysicsError, QueryError};
 
 /// Independent typed-extension failures; these are not Unity native statuses.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -31,6 +31,8 @@ pub enum RuntimeError {
     StagingBusy,
     /// A finite physics operation is outside the bounded native contract.
     PhysicsUnsupported,
+    /// The requested query geometry is invalid.
+    InvalidPhysicsQuery,
 }
 
 impl From<PhysicsError> for RuntimeError {
@@ -41,6 +43,18 @@ impl From<PhysicsError> for RuntimeError {
             PhysicsError::InvalidBody => Self::InvalidObject,
             PhysicsError::InvalidState | PhysicsError::StalePlan => Self::Lifecycle,
             PhysicsError::RevisionExhausted => Self::CountOverflow,
+        }
+    }
+}
+
+impl From<QueryError> for RuntimeError {
+    fn from(error: QueryError) -> Self {
+        match error {
+            QueryError::InvalidQuery => Self::InvalidPhysicsQuery,
+            QueryError::Numeric => Self::Numeric,
+            QueryError::Capacity => Self::PhysicsUnsupported,
+            QueryError::DuplicateOwner => Self::Lifecycle,
+            QueryError::RevisionExhausted => Self::CountOverflow,
         }
     }
 }

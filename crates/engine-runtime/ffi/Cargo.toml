@@ -10,6 +10,7 @@ name = "openunity_engine"
 crate-type = ["rlib", "cdylib"]
 
 [dependencies]
+engine-math.workspace = true
 engine-serialization.workspace = true
 engine-object.workspace = true
 engine-runtime.workspace = true

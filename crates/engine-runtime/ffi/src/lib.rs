@@ -13,6 +13,7 @@ mod object_name;
 mod object_ownership;
 mod physics_gravity;
 mod physics_motion;
+mod physics_query;
 mod runtime_store;
 mod scene;
 mod scene_snapshot;
@@ -53,6 +54,10 @@ pub use physics_motion::{
     ou_rigidbody_scalar_write, ou_rigidbody_vector_read, ou_rigidbody_vector_write,
     ou_rigidbody_wake_up,
 };
+pub use physics_query::{
+    PHYSICS_QUERY_ABI_VERSION, ou_physics_aabb_add, ou_physics_overlap_aabb,
+    ou_physics_query_abi_version, ou_physics_raycast_segment,
+};
 pub use runtime_store::{ou_runtime_create, ou_runtime_destroy};
 pub use scene::{
     ou_scene_abi_version, ou_scene_abort, ou_scene_destroy, ou_scene_object, ou_scene_publish,
@@ -64,8 +69,8 @@ pub use scene_snapshot::{
 pub use status::{
     COUNT_OVERFLOW, GAMEPLAY_FAULTED, HIERARCHY_CYCLE, IDENTITY_EXHAUSTED, INSUFFICIENT_CAPACITY,
     INVALID_BUFFER, INVALID_KIND, INVALID_LIFECYCLE, INVALID_NUMERIC, INVALID_OBJECT,
-    INVALID_RUNTIME, INVALID_SCENE, INVALID_SCENE_PLAN, INVALID_UTF8, PHYSICS_UNSUPPORTED,
-    STAGING_BUSY, STORE_UNAVAILABLE, UNSUPPORTED_TRANSFORM,
+    INVALID_PHYSICS_QUERY, INVALID_RUNTIME, INVALID_SCENE, INVALID_SCENE_PLAN, INVALID_UTF8,
+    PHYSICS_UNSUPPORTED, STAGING_BUSY, STORE_UNAVAILABLE, UNSUPPORTED_TRANSFORM,
 };
 pub use timing::{
     TIME_ABI_VERSION, ou_time_abi_version, ou_time_begin_fixed, ou_time_begin_frame,

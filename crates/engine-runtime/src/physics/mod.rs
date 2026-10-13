@@ -1,4 +1,4 @@
-//! Runtime composition boundary for the one-body motion slice.
+//! Runtime composition boundary for motion state and owner-bound query state.
 
 mod admission;
 mod api_lifetime;
@@ -7,6 +7,7 @@ mod attachment;
 mod body_properties;
 mod catalog_api;
 mod manual_step;
+mod query;
 mod retirement;
 mod transform_sync;
 
