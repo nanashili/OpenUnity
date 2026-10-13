@@ -52,3 +52,67 @@ fn aabb_union_selects_each_axis_endpoint() {
     assert_eq!(combined.min(), [-4.0, 1.0, 4.0]);
     assert_eq!(combined.max(), [3.0, 7.0, 10.0]);
 }
+
+#[test]
+fn aabb_intersects_closed_boxes_including_tangent_contact() {
+    let first = Aabb::try_new([0.0, 0.0, 0.0], [1.0, 1.0, 1.0]).unwrap();
+    let tangent = Aabb::try_new([1.0, 1.0, 1.0], [2.0, 2.0, 2.0]).unwrap();
+    let separate = Aabb::try_new([1.1, 0.0, 0.0], [2.0, 1.0, 1.0]).unwrap();
+
+    assert!(first.intersects(&tangent));
+    assert!(!first.intersects(&separate));
+}
+
+#[test]
+fn segment_starting_inside_returns_zero_parameter() {
+    let bounds = Aabb::try_new([-1.0, -1.0, -1.0], [1.0, 1.0, 1.0]).unwrap();
+
+    assert_eq!(
+        bounds.intersect_segment([0.0, 0.0, 0.0], [2.0, 0.0, 0.0]),
+        Ok(Some((0.0, [0.0, 0.0, 0.0])))
+    );
+}
+
+#[test]
+fn segment_starting_on_boundary_is_a_hit() {
+    let bounds = Aabb::try_new([0.0, 0.0, 0.0], [1.0, 1.0, 1.0]).unwrap();
+
+    assert_eq!(
+        bounds.intersect_segment([0.0, 0.5, 0.5], [-1.0, 0.0, 0.0]),
+        Ok(Some((0.0, [0.0, 0.5, 0.5])))
+    );
+}
+
+#[test]
+fn segment_tangency_and_parallel_miss_follow_closed_slab_rules() {
+    let bounds = Aabb::try_new([0.0, 0.0, 0.0], [1.0, 1.0, 1.0]).unwrap();
+
+    assert_eq!(
+        bounds.intersect_segment([-1.0, 1.0, 0.5], [2.0, 0.0, 0.0]),
+        Ok(Some((0.5, [0.0, 1.0, 0.5])))
+    );
+    assert_eq!(
+        bounds.intersect_segment([-1.0, 2.0, 0.5], [2.0, 0.0, 0.0]),
+        Ok(None)
+    );
+}
+
+#[test]
+fn segment_zero_displacement_is_unsupported() {
+    let bounds = Aabb::try_new([-1.0, -1.0, -1.0], [1.0, 1.0, 1.0]).unwrap();
+
+    assert_eq!(
+        bounds.intersect_segment([0.0, 0.0, 0.0], [0.0, 0.0, 0.0]),
+        Err(MathError::Unsupported)
+    );
+}
+
+#[test]
+fn segment_nonfinite_input_is_numeric_failure() {
+    let bounds = Aabb::try_new([-1.0, -1.0, -1.0], [1.0, 1.0, 1.0]).unwrap();
+
+    assert_eq!(
+        bounds.intersect_segment([f32::NAN, 0.0, 0.0], [1.0, 0.0, 0.0]),
+        Err(MathError::Numeric)
+    );
+}

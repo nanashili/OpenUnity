@@ -6,10 +6,12 @@ mod body_configuration;
 mod body_profile;
 mod gravity;
 mod motion_error;
+mod query;
 mod simulation_mode;
 
 pub use body::{BodyId, BodyState};
 pub use body_configuration::BodyConfiguration;
 pub use gravity::{GravityConfiguration, GravityError};
 pub use motion_error::PhysicsError;
+pub use query::{QueryError, RaySegmentHit};
 pub use simulation_mode::{BodyInterpolation, SimulationMode};
