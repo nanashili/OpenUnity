@@ -39,6 +39,12 @@ impl FromStr for Guid {
     }
 }
 
+impl Guid {
+    pub(crate) fn is_zero(&self) -> bool {
+        self.0.iter().all(|byte| *byte == 0)
+    }
+}
+
 impl fmt::Display for Guid {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         for byte in self.0 {

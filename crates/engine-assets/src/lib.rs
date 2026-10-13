@@ -1,5 +1,6 @@
 //! Bounded metadata headers, metadata discovery, and render asset manifests.
 
+mod asset_object_catalog;
 mod guid;
 mod json_parser;
 mod manifest_wire;
@@ -14,6 +15,11 @@ mod parts_wire;
 mod render_assets;
 mod unlit_material;
 
+pub use asset_object_catalog::{
+    AssetObjectBinding, AssetObjectCatalog, AssetObjectCatalogBuildError, AssetObjectClass,
+    AssetObjectLookupError, AssetObjectReference, AssetObjectTarget, InvalidReference,
+    InvalidReferenceComponent,
+};
 pub use guid::{Guid, InvalidGuid};
 pub use mesh_asset::{AssetError, MeshAsset};
 pub use metadata::{MAX_METADATA_BYTES, Metadata, MetadataError, parse};
