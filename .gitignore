@@ -28,6 +28,14 @@
 !/apps/**/Cargo.toml
 !/apps/**/src/**/*.rs
 !/apps/cli/tests/wav_cli_export.rs
+!/apps/cli/tests/common/mod.rs
+!/apps/cli/tests/common/cli_process.rs
+!/apps/cli/tests/common/wav_fixtures.rs
+!/apps/cli/tests/common/workspace.rs
+!/apps/cli/tests/common/wave_verification.rs
+!/apps/cli/tests/common/admission_support.rs
+!/apps/cli/tests/wav_cli_mix_admission.rs
+!/apps/cli/tests/wav_cli_mix_behavior.rs
 
 # Independent managed compatibility and hosting sources.
 !/managed/
