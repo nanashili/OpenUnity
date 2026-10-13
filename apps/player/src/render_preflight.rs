@@ -59,7 +59,7 @@ fn load_version2(
     arguments: &RenderArguments,
     manifest_bytes: Vec<u8>,
 ) -> Result<(engine_scene::ScenePlan, RenderManifest), String> {
-    let imported = engine_scene::import_project_with_render_references(
+    let imported = engine_scene::import_project_with_render_sources(
         arguments.project(),
         arguments.scene(),
         arguments.bindings(),
