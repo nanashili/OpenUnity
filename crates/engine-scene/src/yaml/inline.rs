@@ -6,13 +6,25 @@ pub(super) fn pair(input: &str) -> Result<(&str, &str)> {
     let (key, value) = input
         .split_once(':')
         .ok_or_else(|| SceneError::new("expected key/value separator"))?;
-    if key.is_empty()
-        || !key.bytes().all(|b| b.is_ascii_alphanumeric() || b == b'_')
-        || (!value.is_empty() && !value.starts_with(' '))
-    {
+    if !supported_key(key) || (!value.is_empty() && !value.starts_with(' ')) {
         return Err(SceneError::new("unsupported mapping key or separator"));
     }
     Ok((key, value.trim_start_matches(' ')))
+}
+
+fn supported_key(key: &str) -> bool {
+    is_identifier(key)
+        || matches!(
+            key,
+            "orthographic size" | "field of view" | "near clip plane" | "far clip plane"
+        )
+}
+
+fn is_identifier(key: &str) -> bool {
+    !key.is_empty()
+        && key
+            .bytes()
+            .all(|byte| byte.is_ascii_alphanumeric() || byte == b'_')
 }
 pub(super) fn inline(input: &str, depth: usize) -> Result<Node> {
     if depth > MAX_DEPTH {

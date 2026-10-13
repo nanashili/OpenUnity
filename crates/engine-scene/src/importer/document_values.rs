@@ -28,7 +28,7 @@ pub(super) fn integer(node: &Node) -> Result<i64> {
     }
     s.parse().map_err(SceneError::new)
 }
-pub(super) fn float(node: &Node) -> Result<f32> {
+pub(crate) fn float(node: &Node) -> Result<f32> {
     if matches!(node, Node::Quoted(_)) {
         return Err(SceneError::new("quoted numeric scalar unsupported"));
     }
@@ -44,7 +44,7 @@ pub(super) fn float(node: &Node) -> Result<f32> {
     }
     Ok(v)
 }
-pub(super) fn flag(node: &Node) -> Result<bool> {
+pub(crate) fn flag(node: &Node) -> Result<bool> {
     match integer(node)? {
         0 => Ok(false),
         1 => Ok(true),
@@ -69,7 +69,7 @@ pub(super) fn reference(node: &Node) -> Result<i64> {
 pub(super) fn references(node: &Node) -> Result<Vec<i64>> {
     node.seq()?.iter().map(reference).collect()
 }
-pub(super) fn vector<const N: usize>(node: &Node) -> Result<[f32; N]> {
+pub(crate) fn vector<const N: usize>(node: &Node) -> Result<[f32; N]> {
     let map = node.map()?;
     let names = &["x", "y", "z", "w"][..N];
     keys(map, names)?;
