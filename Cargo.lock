@@ -1025,6 +1025,7 @@ dependencies = [
  "engine-identifiers",
  "engine-input",
  "engine-math",
+ "engine-navigation",
  "engine-object",
  "engine-physics-3d",
  "engine-physics-api",

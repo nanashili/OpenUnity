@@ -12,6 +12,7 @@ mod input;
 mod input_api;
 mod lifecycle;
 mod math;
+mod navigation;
 mod object_access;
 mod object_lifetime;
 mod physics;
@@ -27,6 +28,7 @@ use engine_object::ObjectKind;
 pub use error::RuntimeError;
 pub use input::{InputPreparationError, RuntimeInputError};
 pub use lifecycle::LifecycleEvent;
+pub use navigation::{NavigationRoute, RuntimeNavigationError};
 pub use object_access::MAX_OBJECT_NAME_BYTES;
 pub use scene_snapshot::{
     SNAPSHOT_MAX_ROWS, SNAPSHOT_ROW_STRIDE, SNAPSHOT_VERSION, SceneSnapshot, SceneSnapshotRow,
