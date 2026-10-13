@@ -34,6 +34,11 @@ impl AssetObjectCatalog {
         })
     }
 
+    /// Borrows the exact validated render-resource snapshot owned by this catalog.
+    pub fn render_assets(&self) -> &RenderAssets {
+        &self.render_assets
+    }
+
     /// Resolves a reference to the mesh owned by this catalog.
     pub fn resolve_mesh(
         &self,
