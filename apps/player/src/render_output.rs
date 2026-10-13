@@ -31,6 +31,8 @@ pub enum CallbackResult {
         tick_input: Option<i64>,
         returned: i64,
     },
+    /// No managed callback belongs to this native-only frame.
+    NotApplicable,
 }
 
 /// One independently attempted cleanup action.
@@ -153,6 +155,14 @@ impl RenderOutputPublisher {
         self.frames
             .push(frame_record(ordinal, artifact, image, callback));
         Ok(())
+    }
+
+    /// Publish the native physics state beside the frame receipt.
+    pub(crate) fn write_physics_scene_state<T: Serialize>(
+        &self,
+        state: &T,
+    ) -> Result<(), PublishError> {
+        receipt_files::write_json_exclusive(&self.directory, "physics-scene.json", state, true)
     }
 
     /// Write the success receipt after the caller has completed cleanup/drop.

@@ -26,16 +26,17 @@ API and .NET hosting.
 | Scenes and assets | Bounded Unity text-scene import, metadata/GUID indexing, and supported serialized fields and object references. |
 | Project compilation | Explicit authored C# source compilation and headless scene launch. |
 | Rendering | Offscreen orthographic triangle rendering with explicit mesh/material bindings, depth testing, and GPU readback. Flat 2D and 3D-depth samples have run on Metal. |
-| Physics | Up to 256 collider-free 3D dynamic bodies per runtime, one per supported owner, with scripted translation steps, gravity, finite velocity storage, and initial authored orientation. Independent native AABB segment/overlap queries support explicit world-space volumes and owner lifetime. |
+| Physics | The legacy manual-motion slice supports up to 256 collider-free 3D dynamic bodies per runtime, with scripted translation steps and independent native query volumes. A separate runtime-owned collision scene supports bounded 2D boxes and 3D cuboids, gravity, contact response, fixed-phase scheduling, Transform publication, and deterministic removal. |
 | Animation and audio | Independent native clip/state sampling and offline audio mixing; general Unity API and content compatibility remain unverified. |
 | Editor | Native authoring UI with hierarchy, inspector, project browser, console, transform markers, undo/redo, and independent scene persistence. |
 
 General Unity project import, public SceneManager compatibility, perspective
-rendering, serialized Camera/MeshRenderer import, Physics2D, collision response,
-and complete UnityEditor APIs remain unimplemented or unverified. Current scene
-rendering uses a separate bounded render manifest. The editor viewport displays
-authoring markers; Editor Play mode and general Unity project builds remain
-unsupported.
+rendering, automatic Camera/MeshRenderer runtime import, managed Physics2D and
+Collider APIs, and complete UnityEditor APIs remain unimplemented or
+unverified. Bounded Camera property and MeshFilter/MeshRenderer reference
+extraction are available, as described below. Current scene rendering uses a
+separate bounded render manifest. The editor viewport displays authoring
+markers; Editor Play mode and general Unity project builds remain unsupported.
 
 Native query volumes are a separate foundation with a 256-volume limit per
 runtime. They do not follow Transforms or expose Unity Collider/Physics.Raycast
@@ -43,9 +44,19 @@ APIs, and have no verified Unity query compatibility.
 
 Multi-body motion has passed native integration, C ABI, and standalone C#
 capacity/lifetime checks. Failed batch steps preserve body and Transform state.
-This is a bounded independent extension; Unity reference comparisons cover the
-earlier single-body fixtures. Automatic physics scheduling, nonzero angular
-integration, contacts, and general Unity physics parity remain unsupported.
+This collider-free manual-motion slice is separate from collision scenes; it
+does not provide collision response or automatic scheduling.
+
+Native collision scenes use real Rapier 2D/3D solvers and are stepped by the
+runtime on an active fixed phase or through an explicit caller step. The
+bounded profile admits up to 256 2D bodies or 128 3D bodies, limited to dynamic
+boxes/cuboids and fixed boxes/cuboids. It has no collision-event API, filters,
+sensors, joints, or managed Unity collider behavior, and Unity parity remains
+unverified. Run `--physics-scene <2d|3d> <steps:60..600> <width> <height>
+<hardware|software> <fresh-output-dir>` to capture an independently authored
+falling-body scene. The command writes initial, middle, and final PPM GPU
+readbacks with solver snapshots in `physics-scene.json` and renderer details in
+`receipt.json`.
 
 The native asset catalog resolves up to 256 explicit GUID/local-file-ID bindings
 to typed meshes and unlit materials. Scene reference extraction separately retains
@@ -84,9 +95,11 @@ cargo run -p openunity-editor --release --locked
 The player self-check exercises native object identity and lifetime. It is an
 infrastructure check, not a Unity compatibility test. Run the player without
 arguments or with `--help` for its developer hosting, scene-loading, and
-`--render-scene` commands. That render route loads one managed scene session,
-captures its transforms, and writes PPM frames plus a receipt containing the
-actual adapter, draw counts, readback status, and cleanup results.
+`--render-scene`, and `--physics-scene` commands. The render route loads one
+managed scene session and captures its transforms. The physics route runs a
+bounded native 2D or 3D collision scene. Both write PPM frames and a receipt
+containing the actual adapter, draw counts, readback status, and cleanup
+results.
 
 The default build uses independent fallback fonts and UI graphics. A Unity
 installation, extracted Unity resources, or proprietary runtime components are

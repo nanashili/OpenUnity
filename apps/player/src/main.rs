@@ -1,6 +1,7 @@
 //! Thin player entrypoint with one explicitly owned render route.
 
 mod arguments;
+mod physics_scene;
 mod render_frames;
 mod render_manifest;
 mod render_output;
@@ -18,6 +19,11 @@ fn main() -> ExitCode {
         .is_some_and(|argument| argument == arguments::RENDER_SCENE_FLAG)
     {
         render_scene::run(&args).map_err(|error| Box::new(error) as Box<dyn Error>)
+    } else if args
+        .first()
+        .is_some_and(|argument| argument == physics_scene::arguments::PHYSICS_SCENE_FLAG)
+    {
+        physics_scene::run(&args).map_err(|error| Box::new(error) as Box<dyn Error>)
     } else {
         openunity_cli::run()
     };
