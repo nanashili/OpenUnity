@@ -8,7 +8,7 @@ use std::path::{Path, PathBuf};
 
 use engine_audio::offline::render_f32_wav_offline;
 
-mod wave_file;
+use super::audio_output;
 
 const MAX_INPUT_BYTES: usize = 16 * 1024 * 1024;
 
@@ -18,7 +18,7 @@ pub(super) fn run(args: &[String]) -> Result<(), Box<dyn Error>> {
     let bytes = read_input(&request.input_path)?;
     let output =
         render_f32_wav_offline(&bytes, request.block_frames).map_err(AudioExportError::Render)?;
-    wave_file::publish(&request.output_path, &output).map_err(AudioExportError::Output)?;
+    audio_output::publish(&request.output_path, &output).map_err(AudioExportError::Output)?;
     println!(
         "exported {} to {}",
         request.input_path.display(),
@@ -82,7 +82,7 @@ enum AudioExportError {
     InputAllocationFailed(PathBuf),
     InputTooLarge { path: PathBuf },
     Render(engine_audio::offline::WavOfflineError),
-    Output(wave_file::WaveFileError),
+    Output(audio_output::WaveFileError),
 }
 
 impl fmt::Display for AudioExportError {

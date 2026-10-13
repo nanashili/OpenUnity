@@ -1,6 +1,7 @@
 //! Shared standalone command selection; command modules own preparation and execution.
 
 mod audio_export;
+mod audio_output;
 mod diagnostics;
 mod scene;
 mod script;

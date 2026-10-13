@@ -3,7 +3,7 @@ use std::io;
 use std::path::PathBuf;
 
 #[derive(Debug)]
-pub(in crate::commands::audio_export) enum WaveFileError {
+pub(in crate::commands) enum WaveFileError {
     InvalidDestination(PathBuf),
     Parent {
         path: PathBuf,

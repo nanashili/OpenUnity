@@ -6,7 +6,7 @@ use std::sync::Arc;
 use engine_audio::offline::OfflineOutput;
 
 mod error;
-pub(super) use error::WaveFileError;
+pub(in crate::commands) use error::WaveFileError;
 
 const TEMP_ATTEMPTS: u32 = 32;
 const WRITE_BUFFER_BYTES: usize = 4096;
