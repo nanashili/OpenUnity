@@ -17,6 +17,10 @@ pub(crate) struct Document {
     pub file_id: i64,
     pub node: Node,
 }
+
+const YAML_DIRECTIVE: &str = "%YAML 1.1";
+const TAG_DIRECTIVE: &str = "%TAG !u! tag:unity3d.com,2011:";
+
 pub(crate) fn parse(bytes: &[u8]) -> Result<Vec<Document>> {
     if bytes.len() > MAX_INPUT_BYTES {
         return Err(SceneError::new("scene byte limit"));
@@ -26,11 +30,8 @@ pub(crate) fn parse(bytes: &[u8]) -> Result<Vec<Document>> {
         return Err(SceneError::new("unsupported scene encoding/control"));
     }
     let mut lines = source.lines();
-    for expected in ["%UNITY 7.0", "%YAML 1.1", "%TAG !u! tag:unity3d.com,2011:"] {
-        if lines.next() != Some(expected) {
-            return Err(SceneError::new("unsupported saved scene directives"));
-        }
-    }
+    parse_directives(&mut lines)?;
+
     let mut result = Vec::new();
     let mut header = None;
     let mut body = Vec::new();
@@ -39,6 +40,9 @@ pub(crate) fn parse(bytes: &[u8]) -> Result<Vec<Document>> {
             finish_document(header.take(), &mut body, &mut result)?;
             header = Some(parse_document_header(rest)?);
         } else {
+            if header.is_none() && line.starts_with('%') {
+                return Err(SceneError::new("unsupported saved scene directives"));
+            }
             if header.is_none() || line.is_empty() {
                 return Err(SceneError::new("unsupported document syntax"));
             }
@@ -64,6 +68,24 @@ pub(crate) fn parse(bytes: &[u8]) -> Result<Vec<Document>> {
         return Err(SceneError::new("empty scene"));
     }
     Ok(result)
+}
+
+fn parse_directives(lines: &mut std::str::Lines<'_>) -> Result<()> {
+    match lines.next() {
+        Some("%UNITY 7.0") => {
+            if lines.next() != Some(YAML_DIRECTIVE) || lines.next() != Some(TAG_DIRECTIVE) {
+                return Err(SceneError::new("unsupported saved scene directives"));
+            }
+        }
+        Some(YAML_DIRECTIVE) => {
+            if lines.next() != Some(TAG_DIRECTIVE) {
+                return Err(SceneError::new("unsupported saved scene directives"));
+            }
+        }
+        _ => return Err(SceneError::new("unsupported saved scene directives")),
+    }
+
+    Ok(())
 }
 
 fn parse_document_header(rest: &str) -> Result<(i64, i64)> {
