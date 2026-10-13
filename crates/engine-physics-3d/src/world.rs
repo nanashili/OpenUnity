@@ -2,7 +2,7 @@
 
 use std::sync::Arc;
 
-use engine_math::Vector;
+use engine_math::{Quaternion, Vector};
 use engine_physics_api::{BodyId, BodyState, PhysicsError};
 
 /// A private per-instance token: Arc identity binds plans without a global table.
@@ -54,10 +54,24 @@ impl MotionWorld {
     /// # Errors
     /// Returns Capacity if occupied, Numeric for nonfinite position, or exhaustion.
     pub fn reserve(&mut self, id: BodyId, position: Vector) -> Result<(), PhysicsError> {
+        self.reserve_pose(id, position, [0.0, 0.0, 0.0, 1.0])
+    }
+
+    /// Reserve a hidden body with an initial position and rotation.
+    /// # Errors
+    /// Returns Capacity if occupied, Numeric for invalid pose values, or exhaustion.
+    pub fn reserve_pose(
+        &mut self,
+        id: BodyId,
+        position: Vector,
+        rotation: Quaternion,
+    ) -> Result<(), PhysicsError> {
         if self.slot.is_some() {
             return Err(PhysicsError::Capacity);
         }
-        let state = BodyState::new(position)?;
+
+        let mut state = BodyState::new(position)?;
+        state.set_rotation(rotation)?;
         let revision = self.next_revision()?;
 
         self.slot = Some(BodySlot::Reserved(BodyRecord { id, state }));
@@ -136,3 +150,6 @@ impl MotionWorld {
         }
     }
 }
+
+#[cfg(test)]
+mod tests;
