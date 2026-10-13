@@ -65,10 +65,19 @@ impl EditorApp {
         self.check_input(path)?;
         let project = Project::open(path).map_err(|e| e.to_string())?;
         let mut roots = self.protected_roots.clone();
-        roots.push(project.root().to_path_buf());
+        let project_root = project.root().to_path_buf();
+
+        if !roots.contains(&project_root) {
+            roots.push(project_root);
+        }
+
         let policy = WritePolicy::new(roots.clone()).map_err(|e| e.to_string())?;
 
         super::project_warnings::record_project_warnings(&mut self.console, project.diagnostics())?;
+
+        if self.project.is_some() {
+            self.project_panel.freeze_snapshot(self.project.as_ref());
+        }
 
         self.project_text = project.root().display().to_string();
         self.protected_roots = roots;

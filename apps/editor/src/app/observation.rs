@@ -44,7 +44,7 @@ impl EditorApp {
 
     /// Actual last-frame Project browser state, paths, and rendered controls.
     pub fn project_browser_snapshot(&self) -> serde_json::Value {
-        self.project_panel.snapshot()
+        self.project_panel.snapshot(self.project.as_ref())
     }
 
     /// Actual last-frame hierarchy query, visible canonical identities, and controls.

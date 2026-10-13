@@ -6,8 +6,8 @@ impl ProjectBrowserPanel {
     pub(super) fn show_asset_entry(
         &mut self,
         ui: &mut egui::Ui,
+        project: &Project,
         entry: &ProjectEntry,
-        nonempty: &std::collections::BTreeSet<&Path>,
         frame: &mut ReferenceFrame,
     ) {
         let selected = self.selected_path.as_deref() == Some(entry.relative_path.as_path());
@@ -26,7 +26,7 @@ impl ProjectBrowserPanel {
                 label.as_ref(),
             )
         });
-        let icon_role = self.asset_icon_role(entry, nonempty);
+        let icon_role = self.asset_icon_role(project, entry);
         Self::paint_asset_entry(ui, rect, &response, entry, label.as_ref(), icon_role);
         frame.controls.push(appearance::control(
             format!("project.entry.{}", entry.relative_path.display()),
@@ -46,15 +46,11 @@ impl ProjectBrowserPanel {
         ));
     }
 
-    fn asset_icon_role(
-        &self,
-        entry: &ProjectEntry,
-        nonempty: &std::collections::BTreeSet<&Path>,
-    ) -> &'static str {
+    fn asset_icon_role(&self, project: &Project, entry: &ProjectEntry) -> &'static str {
         if entry.kind == ProjectEntryKind::Directory {
             if self.directory == entry.relative_path {
                 "folder_open"
-            } else if nonempty.contains(entry.relative_path.as_path()) {
+            } else if project.has_children(entry.relative_path.as_path()) {
                 "folder"
             } else {
                 "folder_empty"

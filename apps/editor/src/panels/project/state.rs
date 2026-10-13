@@ -13,12 +13,11 @@ impl ProjectBrowserPanel {
             self.project_root = Some(project.root().to_path_buf());
             self.selected_path = None;
         }
-        if self.selected_path.as_ref().is_some_and(|selected| {
-            !project
-                .entries()
-                .iter()
-                .any(|entry| &entry.relative_path == selected)
-        }) {
+        if self
+            .selected_path
+            .as_ref()
+            .is_some_and(|selected| project.entry(selected).is_none())
+        {
             self.selected_path = None;
         }
     }
@@ -30,12 +29,10 @@ impl ProjectBrowserPanel {
             self.directory.clear();
         }
         if let Some(project) = project
-            && self.selected_path.as_ref().is_some_and(|selected| {
-                !project
-                    .entries()
-                    .iter()
-                    .any(|entry| &entry.relative_path == selected)
-            })
+            && self
+                .selected_path
+                .as_ref()
+                .is_some_and(|selected| project.entry(selected).is_none())
         {
             self.selected_path = None;
         }
@@ -43,10 +40,9 @@ impl ProjectBrowserPanel {
 
     pub(super) fn reconcile_directory(&mut self, project: &Project) {
         if !self.directory.as_os_str().is_empty()
-            && !project
-                .entries()
-                .iter()
-                .any(|e| e.kind == ProjectEntryKind::Directory && e.relative_path == self.directory)
+            && project
+                .entry(&self.directory)
+                .is_none_or(|entry| entry.kind != ProjectEntryKind::Directory)
         {
             self.directory.clear();
         }

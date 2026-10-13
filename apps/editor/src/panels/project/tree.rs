@@ -7,14 +7,9 @@ impl ProjectBrowserPanel {
         &mut self,
         tree: &mut egui::Ui,
         project: &Project,
-        nonempty: &std::collections::BTreeSet<&Path>,
         frame: &mut ReferenceFrame,
     ) {
-        let directories: Vec<_> = project
-            .entries()
-            .iter()
-            .filter(|e| e.kind == ProjectEntryKind::Directory)
-            .collect();
+        let directories = project.directories();
         // No explicit style height is configured for these custom folder rows.
         let row_height = appearance::TREE_LINE_HEIGHT_FALLBACK;
         tree.spacing_mut().item_spacing.y = 0.0;
@@ -25,7 +20,10 @@ impl ProjectBrowserPanel {
                     self.show_root_folder(ui, project, frame);
                 }
                 for index in range.filter(|i| *i > 0) {
-                    self.show_directory_folder(ui, directories[index - 1], nonempty, frame);
+                    let entry_index = directories[index - 1];
+                    if let Some(entry) = project.entries().get(entry_index) {
+                        self.show_directory_folder(ui, project, entry, frame);
+                    }
                 }
             });
     }
@@ -43,7 +41,7 @@ impl ProjectBrowserPanel {
             self.directory.as_os_str().is_empty(),
             if self.directory.as_os_str().is_empty() {
                 "folder_open"
-            } else if project.entries().is_empty() {
+            } else if !project.has_children(Path::new("")) {
                 "folder_empty"
             } else {
                 "folder"
@@ -69,8 +67,8 @@ impl ProjectBrowserPanel {
     fn show_directory_folder(
         &mut self,
         ui: &mut egui::Ui,
+        project: &Project,
         entry: &ProjectEntry,
-        nonempty: &std::collections::BTreeSet<&Path>,
         frame: &mut ReferenceFrame,
     ) {
         let selected = self.directory == entry.relative_path;
@@ -82,7 +80,7 @@ impl ProjectBrowserPanel {
             .to_string_lossy();
         let icon_role = if selected {
             "folder_open"
-        } else if nonempty.contains(entry.relative_path.as_path()) {
+        } else if project.has_children(entry.relative_path.as_path()) {
             "folder"
         } else {
             "folder_empty"

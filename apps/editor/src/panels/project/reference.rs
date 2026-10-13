@@ -57,18 +57,23 @@ impl ProjectBrowserPanel {
         };
 
         self.reconcile_directory(project);
-        let nonempty: std::collections::BTreeSet<_> = project
-            .entries()
-            .iter()
-            .filter_map(|entry| entry.relative_path.parent())
-            .collect();
+        self.show_reference_tree(&mut tree, project, &mut frame);
 
-        self.show_reference_tree(&mut tree, project, &nonempty, &mut frame);
-        let entries =
-            self.show_reference_content(ui, project, &nonempty, layout.content_rect, &mut frame);
+        let entry_directory = self.directory.clone();
+        let visible_indices =
+            self.query_cache
+                .reference_indices(project, &entry_directory, &self.filter);
+        let entry_count = self.show_reference_content(
+            ui,
+            project,
+            &visible_indices,
+            &entry_directory,
+            layout.content_rect,
+            &mut frame,
+        );
 
-        self.show_reference_footer(ui, &layout, entries.len());
-        self.record_reference(&layout, frame, &entries);
+        self.show_reference_footer(ui, &layout, entry_count);
+        self.record_reference(&layout, frame, project, &entry_directory, &visible_indices);
     }
 
     fn show_missing_project(ui: &mut egui::Ui, content_rect: egui::Rect) {

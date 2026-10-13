@@ -15,6 +15,7 @@ impl ProjectBrowserPanel {
     fn show_legacy(&mut self, ui: &mut egui::Ui, project: Option<&Project>) {
         ui.heading("Project");
         let Some(project) = project else {
+            self.query_cache.clear();
             self.project_root = None;
             self.selected_path = None;
             ui.label("No project is open.");
@@ -24,13 +25,8 @@ impl ProjectBrowserPanel {
 
         self.reconcile_legacy_project(project);
         self.show_legacy_controls(ui, project);
-        let labels: Vec<_> = project
-            .entries()
-            .iter()
-            .map(|entry| entry.relative_path.to_string_lossy())
-            .collect();
-        let matching = ranked_indices(&self.filter, labels.iter().map(|label| label.as_ref()));
-        self.show_legacy_matches(ui, project, &labels, &matching);
+        let matching = self.query_cache.legacy_indices(project, &self.filter);
+        self.show_legacy_matches(ui, project, &matching);
         self.show_legacy_selection(ui, project);
     }
 
@@ -59,20 +55,20 @@ impl ProjectBrowserPanel {
         &mut self,
         ui: &mut egui::Ui,
         project: &Project,
-        labels: &[std::borrow::Cow<'_, str>],
-        matching: &[usize],
+        matching: &super::cache::CachedEntryIndices,
     ) {
+        let matching_count = matching.legacy_len(project);
         ui.label(format!(
             "{} of {} entries",
-            matching.len(),
+            matching_count,
             project.entries().len()
         ));
         if project.entries().is_empty() {
             ui.label("Assets contains no discovered files or directories.");
-        } else if matching.is_empty() {
+        } else if matching_count == 0 {
             ui.label("No entries match this filter.");
         } else {
-            self.show_legacy_rows(ui, project, labels, matching);
+            self.show_legacy_rows(ui, project, matching);
         }
     }
 
@@ -80,8 +76,7 @@ impl ProjectBrowserPanel {
         &mut self,
         ui: &mut egui::Ui,
         project: &Project,
-        labels: &[std::borrow::Cow<'_, str>],
-        matching: &[usize],
+        matching: &super::cache::CachedEntryIndices,
     ) {
         // The reader bounds the snapshot; virtual rows keep rendering bounded
         // to the visible portion even when discovery reaches its entry limit.
@@ -91,15 +86,22 @@ impl ProjectBrowserPanel {
         egui::ScrollArea::vertical()
             .id_salt("project_entries")
             .max_height((ui.available_height() - 110.0).max(row_height * 2.0))
-            .show_rows(ui, row_height, matching.len(), |ui, rows| {
+            .show_rows(ui, row_height, matching.legacy_len(project), |ui, rows| {
                 for row in rows {
-                    let index = matching[row];
-                    let entry = &project.entries()[index];
+                    let Some(index) = matching.legacy_index(project, row) else {
+                        continue;
+                    };
+                    let Some(entry) = project.entries().get(index) else {
+                        continue;
+                    };
                     let kind = entry_kind(entry.kind);
                     let selected =
                         self.selected_path.as_deref() == Some(entry.relative_path.as_path());
                     if ui
-                        .selectable_label(selected, format!("{} ({kind})", labels[index]))
+                        .selectable_label(
+                            selected,
+                            format!("{} ({kind})", entry.relative_path.to_string_lossy()),
+                        )
                         .clicked()
                     {
                         self.selected_path = Some(entry.relative_path.clone());
@@ -110,10 +112,10 @@ impl ProjectBrowserPanel {
 
     fn show_legacy_selection(&self, ui: &mut egui::Ui, project: &Project) {
         ui.separator();
-        if let Some(entry) = project
-            .entries()
-            .iter()
-            .find(|entry| self.selected_path.as_deref() == Some(entry.relative_path.as_path()))
+        if let Some(entry) = self
+            .selected_path
+            .as_deref()
+            .and_then(|path| project.entry(path))
         {
             ui.label(format!("Relative path: {}", entry.relative_path.display()));
             ui.label(format!("Type: {}", entry_kind(entry.kind)));
