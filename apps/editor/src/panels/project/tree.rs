@@ -6,23 +6,23 @@ impl ProjectBrowserPanel {
     pub(super) fn show_reference_tree(
         &mut self,
         tree: &mut egui::Ui,
-        project: &Project,
+        source: ProjectSource<'_>,
         frame: &mut ReferenceFrame,
     ) {
-        let directories = project.directories();
+        let directories = source.directories();
         // No explicit style height is configured for these custom folder rows.
         let row_height = appearance::TREE_LINE_HEIGHT_FALLBACK;
         tree.spacing_mut().item_spacing.y = 0.0;
         egui::ScrollArea::both()
-            .id_salt("project.reference.directories")
+            .id_salt(("project.reference.directories", source.key()))
             .show_rows(tree, row_height, directories.len() + 1, |ui, range| {
                 if range.contains(&0) {
-                    self.show_root_folder(ui, project, frame);
+                    self.show_root_folder(ui, source, frame);
                 }
                 for index in range.filter(|i| *i > 0) {
                     let entry_index = directories[index - 1];
-                    if let Some(entry) = project.entries().get(entry_index) {
-                        self.show_directory_folder(ui, project, entry, frame);
+                    if let Some(entry) = source.entries().get(entry_index) {
+                        self.show_directory_folder(ui, source, entry, frame);
                     }
                 }
             });
@@ -31,31 +31,34 @@ impl ProjectBrowserPanel {
     fn show_root_folder(
         &mut self,
         ui: &mut egui::Ui,
-        project: &Project,
+        source: ProjectSource<'_>,
         frame: &mut ReferenceFrame,
     ) {
+        let logical_root = source::logical_root(source.key());
+        let role = source::folder_role(source.key(), Path::new(""));
         let (root, mut geometry) = folder_row(
             ui,
-            "Assets",
+            &logical_root,
             0,
             self.directory.as_os_str().is_empty(),
             if self.directory.as_os_str().is_empty() {
                 "folder_open"
-            } else if !project.has_children(Path::new("")) {
+            } else if !source.has_children(Path::new("")) {
                 "folder_empty"
             } else {
                 "folder"
             },
         );
         geometry["path"] = serde_json::json!("");
-        geometry["role"] = serde_json::json!("project.folder.Assets");
+        geometry["source"] = source::observation_key(source.key());
+        geometry["role"] = serde_json::json!(role);
         if frame.rendered_folders.len() < 4096 {
             frame.rendered_folders.push(geometry);
         } else {
             frame.geometry_truncated = true;
         }
         frame.controls.push(appearance::control(
-            "project.folder.Assets",
+            role,
             &root,
             self.directory.as_os_str().is_empty(),
         ));
@@ -67,7 +70,7 @@ impl ProjectBrowserPanel {
     fn show_directory_folder(
         &mut self,
         ui: &mut egui::Ui,
-        project: &Project,
+        source: ProjectSource<'_>,
         entry: &ProjectEntry,
         frame: &mut ReferenceFrame,
     ) {
@@ -80,26 +83,26 @@ impl ProjectBrowserPanel {
             .to_string_lossy();
         let icon_role = if selected {
             "folder_open"
-        } else if project.has_children(entry.relative_path.as_path()) {
+        } else if source.has_children(entry.relative_path.as_path()) {
             "folder"
         } else {
             "folder_empty"
         };
         let (response, mut geometry) = folder_row(ui, &label, depth, selected, icon_role);
-        let response = response.on_hover_text(entry.relative_path.display().to_string());
+        let logical_path = source::logical_path(source.key(), &entry.relative_path);
+        let response = response.on_hover_text(&logical_path);
+        let role = source::folder_role(source.key(), &entry.relative_path);
         geometry["path"] = serde_json::json!(entry.relative_path.to_string_lossy());
-        geometry["role"] =
-            serde_json::json!(format!("project.folder.{}", entry.relative_path.display()));
+        geometry["source"] = source::observation_key(source.key());
+        geometry["role"] = serde_json::json!(role);
         if frame.rendered_folders.len() < 4096 {
             frame.rendered_folders.push(geometry);
         } else {
             frame.geometry_truncated = true;
         }
-        frame.controls.push(appearance::control(
-            format!("project.folder.{}", entry.relative_path.display()),
-            &response,
-            selected,
-        ));
+        frame
+            .controls
+            .push(appearance::control(role, &response, selected));
         if response.clicked() {
             self.directory = entry.relative_path.clone();
         }

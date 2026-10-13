@@ -6,7 +6,7 @@ impl ProjectBrowserPanel {
     pub(super) fn show_asset_entry(
         &mut self,
         ui: &mut egui::Ui,
-        project: &Project,
+        source: ProjectSource<'_>,
         entry: &ProjectEntry,
         frame: &mut ReferenceFrame,
     ) {
@@ -26,31 +26,31 @@ impl ProjectBrowserPanel {
                 label.as_ref(),
             )
         });
-        let icon_role = self.asset_icon_role(project, entry);
+        let icon_role = self.asset_icon_role(source, entry);
         Self::paint_asset_entry(ui, rect, &response, entry, label.as_ref(), icon_role);
-        frame.controls.push(appearance::control(
-            format!("project.entry.{}", entry.relative_path.display()),
-            &response,
-            selected,
-        ));
+        let role = source::entry_role(source.key(), &entry.relative_path);
+        frame
+            .controls
+            .push(appearance::control(role, &response, selected));
         if response.clicked() {
             self.selected_path = Some(entry.relative_path.clone());
+            self.selected_path_kind = Some(entry.kind);
         }
         if response.double_clicked() && entry.kind == ProjectEntryKind::Directory {
             self.directory = entry.relative_path.clone();
         }
         response.on_hover_text(format!(
-            "Assets/{}\n{} · read-only · not imported",
-            entry.relative_path.display(),
+            "{}\n{} · read-only · not imported",
+            source::logical_path(source.key(), &entry.relative_path),
             entry_kind(entry.kind)
         ));
     }
 
-    fn asset_icon_role(&self, project: &Project, entry: &ProjectEntry) -> &'static str {
+    fn asset_icon_role(&self, source: ProjectSource<'_>, entry: &ProjectEntry) -> &'static str {
         if entry.kind == ProjectEntryKind::Directory {
             if self.directory == entry.relative_path {
                 "folder_open"
-            } else if project.has_children(entry.relative_path.as_path()) {
+            } else if source.has_children(entry.relative_path.as_path()) {
                 "folder"
             } else {
                 "folder_empty"

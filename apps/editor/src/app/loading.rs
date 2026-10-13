@@ -74,6 +74,7 @@ impl EditorApp {
         let policy = WritePolicy::new(roots.clone()).map_err(|e| e.to_string())?;
 
         super::project_warnings::record_project_warnings(&mut self.console, project.diagnostics())?;
+        super::project_warnings::record_package_warnings(&mut self.console, &project)?;
 
         if self.project.is_some() {
             self.project_panel.freeze_snapshot(self.project.as_ref());

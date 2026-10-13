@@ -1,14 +1,17 @@
 //! Lazy last-frame observation and one-time replacement snapshot freezing.
 
+mod serialization;
+
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
 use super::cache::CachedEntryIndices;
 use super::*;
-use openunity_editor_core::project::ProjectSnapshotId;
+use openunity_editor_core::project::{ProjectSnapshotId, ProjectSourceKey};
 
 pub(super) struct FrameObservation {
     project_id: Option<ProjectSnapshotId>,
+    source: Option<ObservedSource>,
     folder: PathBuf,
     query: String,
     selected_path: Option<PathBuf>,
@@ -25,6 +28,35 @@ pub(super) struct FrameObservation {
 enum VisibleEntryIndices {
     AllChildren(PathBuf),
     Indices(Arc<[usize]>),
+}
+
+#[derive(Clone, Copy)]
+enum ObservedSource {
+    Assets,
+    EmbeddedPackage(usize),
+}
+
+impl ObservedSource {
+    fn from_key(project: &Project, key: &ProjectSourceKey) -> Option<Self> {
+        match key {
+            ProjectSourceKey::Assets => Some(Self::Assets),
+            ProjectSourceKey::EmbeddedPackage(name) => project
+                .packages()
+                .binary_search_by(|package| package.name().cmp(name))
+                .ok()
+                .map(Self::EmbeddedPackage),
+        }
+    }
+
+    fn resolve(self, project: &Project) -> Option<ProjectSource<'_>> {
+        match self {
+            Self::Assets => project.source(None),
+            Self::EmbeddedPackage(index) => project
+                .packages()
+                .get(index)
+                .and_then(|package| project.source(Some(package.name()))),
+        }
+    }
 }
 
 impl ReferenceFrame {
@@ -47,6 +79,7 @@ impl FrameObservation {
     ) -> Self {
         Self {
             project_id: None,
+            source: None,
             folder: PathBuf::new(),
             query: panel.filter.clone(),
             selected_path: None,
@@ -66,6 +99,7 @@ impl FrameObservation {
         layout: &ReferenceLayout,
         frame: ReferenceFrame,
         project: &Project,
+        source: ProjectSource<'_>,
         entry_directory: &Path,
         visible_indices: &CachedEntryIndices,
     ) -> Self {
@@ -83,6 +117,7 @@ impl FrameObservation {
 
         Self {
             project_id: Some(project.snapshot_id()),
+            source: ObservedSource::from_key(project, source.key()),
             folder: panel.directory.clone(),
             query: panel.filter.clone(),
             selected_path: panel.selected_path.clone(),
@@ -95,57 +130,6 @@ impl FrameObservation {
             search_geometry: frame.search_geometry,
             create_icon: frame.create_icon,
         }
-    }
-
-    fn to_json(&self, project: Option<&Project>) -> Option<serde_json::Value> {
-        let visible_entries = self.visible_entry_values(project)?;
-        let folder = self.folder.to_string_lossy();
-        let selected_path = self
-            .selected_path
-            .as_ref()
-            .map(|path| path.to_string_lossy());
-
-        Some(serde_json::json!({
-            "folder": folder,
-            "query": self.query,
-            "selected_path": selected_path,
-            "visible_entries": visible_entries,
-            "tree_rect": self.tree_rect,
-            "content_rect": self.content_rect,
-            "controls": self.controls,
-            "rendered_folders": self.rendered_folders,
-            "geometry_truncated": self.geometry_truncated,
-            "search_geometry": self.search_geometry,
-            "create_icon": self.create_icon
-        }))
-    }
-
-    fn visible_entry_values(&self, project: Option<&Project>) -> Option<Vec<serde_json::Value>> {
-        let Some(visible_entries) = &self.visible_entries else {
-            return Some(Vec::new());
-        };
-        let project = project?;
-        let project_id = self.project_id.as_ref()?;
-
-        if project.snapshot_id() != *project_id {
-            return None;
-        }
-
-        let indices = match visible_entries {
-            VisibleEntryIndices::AllChildren(directory) => project.children(directory)?,
-            VisibleEntryIndices::Indices(indices) => indices,
-        };
-
-        indices
-            .iter()
-            .map(|&index| {
-                let entry = project.entries().get(index)?;
-                Some(serde_json::json!({
-                    "path": entry.relative_path.to_string_lossy(),
-                    "kind": entry_kind(entry.kind)
-                }))
-            })
-            .collect()
     }
 }
 
@@ -194,6 +178,7 @@ impl ProjectBrowserPanel {
         layout: &ReferenceLayout,
         frame: ReferenceFrame,
         project: &Project,
+        source: ProjectSource<'_>,
         entry_directory: &Path,
         visible_indices: &CachedEntryIndices,
     ) {
@@ -202,6 +187,7 @@ impl ProjectBrowserPanel {
             layout,
             frame,
             project,
+            source,
             entry_directory,
             visible_indices,
         );

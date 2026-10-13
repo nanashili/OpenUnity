@@ -1,48 +1,13 @@
 //! Per-snapshot query results shared by the virtualized Project browser views.
 
-use std::borrow::Cow;
+mod filters;
+mod indices;
+
+pub(super) use indices::CachedEntryIndices;
+
 use std::path::{Path, PathBuf};
-use std::sync::Arc;
 
-use openunity_editor_core::project::{Project, ProjectSnapshotId};
-use openunity_editor_core::search::ranked_indices;
-
-#[derive(Clone)]
-pub(super) enum CachedEntryIndices {
-    AllEntries,
-    AllChildren,
-    Indices(Arc<[usize]>),
-}
-
-impl CachedEntryIndices {
-    pub(super) fn reference_slice<'a>(
-        &'a self,
-        project: &'a Project,
-        directory: &Path,
-    ) -> &'a [usize] {
-        match self {
-            Self::AllChildren => project.children(directory).unwrap_or(&[]),
-            Self::Indices(indices) => indices,
-            Self::AllEntries => &[],
-        }
-    }
-
-    pub(super) fn legacy_len(&self, project: &Project) -> usize {
-        match self {
-            Self::AllEntries => project.entries().len(),
-            Self::Indices(indices) => indices.len(),
-            Self::AllChildren => 0,
-        }
-    }
-
-    pub(super) fn legacy_index(&self, project: &Project, row: usize) -> Option<usize> {
-        match self {
-            Self::AllEntries => (row < project.entries().len()).then_some(row),
-            Self::Indices(indices) => indices.get(row).copied(),
-            Self::AllChildren => None,
-        }
-    }
-}
+use openunity_editor_core::project::{Project, ProjectSnapshotId, ProjectSource, ProjectSourceKey};
 
 #[derive(Clone, Copy, PartialEq, Eq)]
 enum QueryMode {
@@ -52,6 +17,7 @@ enum QueryMode {
 
 struct QueryKey {
     snapshot_id: ProjectSnapshotId,
+    source_key: ProjectSourceKey,
     mode: QueryMode,
     directory: Option<PathBuf>,
     query: String,
@@ -61,11 +27,13 @@ impl QueryKey {
     fn matches(
         &self,
         snapshot_id: &ProjectSnapshotId,
+        source_key: &ProjectSourceKey,
         mode: QueryMode,
         directory: Option<&Path>,
         query: &str,
     ) -> bool {
         &self.snapshot_id == snapshot_id
+            && &self.source_key == source_key
             && self.mode == mode
             && self.directory.as_deref() == directory
             && self.query == query
@@ -73,14 +41,16 @@ impl QueryKey {
 
     fn new(
         snapshot_id: ProjectSnapshotId,
+        source_key: &ProjectSourceKey,
         mode: QueryMode,
         directory: Option<&Path>,
         query: &str,
     ) -> Self {
         Self {
             snapshot_id,
+            source_key: source_key.clone(),
             mode,
-            directory: directory.map(|path| path.to_path_buf()),
+            directory: directory.map(Path::to_path_buf),
             query: query.to_owned(),
         }
     }
@@ -89,6 +59,7 @@ impl QueryKey {
 struct QueryResult {
     key: QueryKey,
     indices: CachedEntryIndices,
+    total_entries: usize,
 }
 
 #[derive(Default)]
@@ -100,52 +71,68 @@ impl ProjectBrowserCache {
     pub(super) fn reference_indices(
         &mut self,
         project: &Project,
+        source: ProjectSource<'_>,
         directory: &Path,
         query: &str,
     ) -> CachedEntryIndices {
         let snapshot_id = project.snapshot_id();
+        let source_key = source.key();
 
         if let Some(result) = &self.result
-            && result
-                .key
-                .matches(&snapshot_id, QueryMode::Reference, Some(directory), query)
+            && result.key.matches(
+                &snapshot_id,
+                source_key,
+                QueryMode::Reference,
+                Some(directory),
+                query,
+            )
         {
             return result.indices.clone();
         }
 
-        let indices = if query.is_empty() {
-            CachedEntryIndices::AllChildren
+        let (indices, total_entries) = if query.is_empty() {
+            filters::all_visible_children(source, directory)
         } else {
-            Self::filter_children(project, directory, query)
+            filters::filter_children(source, directory, query)
         };
 
-        self.replace_result(
+        let key = QueryKey::new(
             snapshot_id,
+            source_key,
             QueryMode::Reference,
             Some(directory),
             query,
-            indices,
-        )
+        );
+
+        self.replace_result(key, indices, total_entries).0
     }
 
-    pub(super) fn legacy_indices(&mut self, project: &Project, query: &str) -> CachedEntryIndices {
+    pub(super) fn legacy_indices(
+        &mut self,
+        project: &Project,
+        source: ProjectSource<'_>,
+        query: &str,
+    ) -> (CachedEntryIndices, usize) {
         let snapshot_id = project.snapshot_id();
+        let source_key = source.key();
 
         if let Some(result) = &self.result
             && result
                 .key
-                .matches(&snapshot_id, QueryMode::Legacy, None, query)
+                .matches(&snapshot_id, source_key, QueryMode::Legacy, None, query)
         {
-            return result.indices.clone();
+            return (result.indices.clone(), result.total_entries);
         }
 
-        let indices = if query.is_empty() {
-            CachedEntryIndices::AllEntries
+        let (indices, total_entries) = if query.is_empty() {
+            filters::all_visible_entries(source)
         } else {
-            Self::ranked_matches(project, query)
+            filters::ranked_matches(source, query)
         };
 
-        self.replace_result(snapshot_id, QueryMode::Legacy, None, query, indices)
+        let key = QueryKey::new(snapshot_id, source_key, QueryMode::Legacy, None, query);
+
+        self.replace_result(key, indices, total_entries)
     }
 
     pub(super) fn clear(&mut self) {
@@ -154,50 +141,15 @@ impl ProjectBrowserCache {
 
     fn replace_result(
         &mut self,
-        snapshot_id: ProjectSnapshotId,
-        mode: QueryMode,
-        directory: Option<&Path>,
-        query: &str,
+        key: QueryKey,
         indices: CachedEntryIndices,
-    ) -> CachedEntryIndices {
+        total_entries: usize,
+    ) -> (CachedEntryIndices, usize) {
         self.result = Some(QueryResult {
-            key: QueryKey::new(snapshot_id, mode, directory, query),
+            key,
             indices: indices.clone(),
+            total_entries,
         });
-        indices
-    }
-
-    fn filter_children(project: &Project, directory: &Path, query: &str) -> CachedEntryIndices {
-        let query = query.to_lowercase();
-        let Some(children) = project.children(directory) else {
-            return CachedEntryIndices::Indices(Arc::from(Vec::<usize>::new()));
-        };
-
-        let entries = project.entries();
-        let indices = children
-            .iter()
-            .filter_map(|&index| {
-                let entry = entries.get(index)?;
-                let name = entry
-                    .relative_path
-                    .file_name()
-                    .unwrap_or_default()
-                    .to_string_lossy()
-                    .to_lowercase();
-                name.contains(&query).then_some(index)
-            })
-            .collect::<Vec<_>>();
-
-        CachedEntryIndices::Indices(indices.into())
-    }
-
-    fn ranked_matches(project: &Project, query: &str) -> CachedEntryIndices {
-        let labels: Vec<Cow<'_, str>> = project
-            .entries()
-            .iter()
-            .map(|entry| entry.relative_path.to_string_lossy())
-            .collect();
-        let indices = ranked_indices(query, labels.iter().map(|label| label.as_ref()));
-        CachedEntryIndices::Indices(indices.into())
+        (indices, total_entries)
     }
 }

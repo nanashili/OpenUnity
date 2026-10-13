@@ -44,7 +44,7 @@ impl ProjectBrowserPanel {
         let layout = ReferenceLayout::paint(ui);
         let mut tree = ui.new_child(
             egui::UiBuilder::new()
-                .id_salt("project.reference.tree")
+                .id_salt(("project.reference.tree", &self.source_key))
                 .max_rect(layout.tree_rect)
                 .layout(egui::Layout::top_down(egui::Align::Min)),
         );
@@ -56,24 +56,36 @@ impl ProjectBrowserPanel {
             return;
         };
 
-        self.reconcile_directory(project);
-        self.show_reference_tree(&mut tree, project, &mut frame);
+        let Some(source) = source::resolve(project, &self.source_key) else {
+            self.record_missing_project(&layout, frame);
+            return;
+        };
+
+        self.reconcile_directory(source);
+        self.show_reference_tree(&mut tree, source, &mut frame);
 
         let entry_directory = self.directory.clone();
         let visible_indices =
             self.query_cache
-                .reference_indices(project, &entry_directory, &self.filter);
+                .reference_indices(project, source, &entry_directory, &self.filter);
         let entry_count = self.show_reference_content(
             ui,
-            project,
+            source,
             &visible_indices,
             &entry_directory,
             layout.content_rect,
             &mut frame,
         );
 
-        self.show_reference_footer(ui, &layout, entry_count);
-        self.record_reference(&layout, frame, project, &entry_directory, &visible_indices);
+        self.show_reference_footer(ui, &layout, source, entry_count);
+        self.record_reference(
+            &layout,
+            frame,
+            project,
+            source,
+            &entry_directory,
+            &visible_indices,
+        );
     }
 
     fn show_missing_project(ui: &mut egui::Ui, content_rect: egui::Rect) {
@@ -86,6 +98,7 @@ impl ProjectBrowserPanel {
         &self,
         ui: &mut egui::Ui,
         layout: &ReferenceLayout,
+        source: ProjectSource<'_>,
         entry_count: usize,
     ) {
         let footer = egui::Rect::from_min_max(
@@ -96,7 +109,11 @@ impl ProjectBrowserPanel {
         let mut footer_ui = ui.new_child(egui::UiBuilder::new().max_rect(footer));
         let details = self.selected_path.as_ref().map_or_else(
             || format!("{} entries · read-only", entry_count),
-            |p| format!("Assets/{} · read-only · not imported", p.display()),
+            |path| {
+                let logical_path = source::logical_path(source.key(), path);
+                let kind = self.selected_path_kind.map(entry_kind).unwrap_or("entry");
+                format!("{logical_path} ({kind}) · read-only · not imported")
+            },
         );
         footer_ui
             .add(egui::Label::new(&details).truncate())
