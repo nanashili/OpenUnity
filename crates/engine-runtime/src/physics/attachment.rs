@@ -6,7 +6,7 @@
 //! those owners and the property metadata needed for Transform synchronization.
 
 use engine_identifiers::ObjectId;
-use engine_math::Vector;
+use engine_math::{Quaternion, Vector};
 use engine_physics_3d::MotionWorld;
 use engine_physics_api::{BodyId, BodyState, SimulationMode};
 
@@ -66,6 +66,7 @@ impl Runtime {
         owner_id: ObjectId,
         transform_id: ObjectId,
         position: Vector,
+        rotation: Quaternion,
     ) -> Result<ObjectId, RuntimeError> {
         if self.physics.attachment.is_some() {
             return Err(RuntimeError::PhysicsUnsupported);
@@ -76,7 +77,7 @@ impl Runtime {
 
         self.physics
             .world
-            .reserve(BodyId::from(body_id), position)
+            .reserve_pose(BodyId::from(body_id), position, rotation)
             .map_err(RuntimeError::from)?;
 
         reservation.commit();

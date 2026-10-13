@@ -53,6 +53,11 @@ impl Runtime {
             .ok_or(RuntimeError::InvalidKind)
     }
     pub(crate) fn world_rotation(&self, id: ObjectId) -> Result<Quaternion, RuntimeError> {
+        let data = self.transform(id)?;
+        if data.parent.is_none() {
+            return Ok(data.rotation);
+        }
+
         let mut current = Some(id);
         let mut result = [0.0, 0.0, 0.0, 1.0];
         while let Some(id) = current {

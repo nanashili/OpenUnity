@@ -11,9 +11,11 @@ impl Runtime {
     /// Reserve a hidden Rigidbody attached to a supported root GameObject.
     pub fn rigidbody_reserve(&mut self, owner: ObjectId) -> Result<ObjectId, RuntimeError> {
         let transform = self.validate_lifetime_admission(owner, true)?;
-        let position = self.transform(transform)?.position;
+        let transform_data = self.transform(transform)?;
+        let position = transform_data.position;
+        let rotation = transform_data.rotation;
 
-        self.reserve_physics_body(owner, transform, position)
+        self.reserve_physics_body(owner, transform, position, rotation)
     }
 
     /// Publish a previously reserved Rigidbody after rechecking its owner.
@@ -76,7 +78,7 @@ impl Runtime {
         }
 
         let transform = self.gameobject_transform(owner)?;
-        self.validate_root_profile(transform)?;
+        self.validate_root_structure(transform)?;
         Ok(transform)
     }
 
@@ -104,7 +106,7 @@ impl Runtime {
                 return Err(RuntimeError::Lifecycle);
             }
         }
-        self.validate_root_profile(transform)
+        self.validate_root_structure(transform)
     }
 
     pub(super) fn validate_physics_property_access(
@@ -206,13 +208,9 @@ impl Runtime {
         Ok(())
     }
 
-    pub(crate) fn validate_root_profile(&self, transform: ObjectId) -> Result<(), RuntimeError> {
+    pub(crate) fn validate_root_structure(&self, transform: ObjectId) -> Result<(), RuntimeError> {
         let data = self.transform(transform)?;
-        if data.parent.is_some()
-            || !data.children.is_empty()
-            || data.scale != [1.0; 3]
-            || data.rotation != [0.0, 0.0, 0.0, 1.0]
-        {
+        if data.parent.is_some() || !data.children.is_empty() || data.scale != [1.0; 3] {
             return Err(RuntimeError::PhysicsUnsupported);
         }
         Ok(())
