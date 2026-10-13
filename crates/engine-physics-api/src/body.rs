@@ -2,7 +2,7 @@
 
 use crate::{BodyConfiguration, PhysicsError};
 use engine_identifiers::ObjectId;
-use engine_math::{Vector, finite};
+use engine_math::{Quaternion, Vector, finite, normalize};
 
 /// Native component identity supplied by the object owner; never allocated here.
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
@@ -24,6 +24,7 @@ impl From<BodyId> for ObjectId {
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct BodyState {
     position: Vector,
+    rotation: Quaternion,
     linear_velocity: Vector,
     configuration: BodyConfiguration,
     awake: bool,
@@ -37,6 +38,7 @@ impl BodyState {
         finite(&position)?;
         Ok(Self {
             position,
+            rotation: [0.0, 0.0, 0.0, 1.0],
             linear_velocity: [0.0; 3],
             configuration: BodyConfiguration::default(),
             awake: true,
@@ -46,6 +48,11 @@ impl BodyState {
     /// Complete copied native position, independent of any Transform publication.
     pub fn position(self) -> Vector {
         self.position
+    }
+
+    /// Complete copied normalized x/y/z/w rotation.
+    pub fn rotation(self) -> Quaternion {
+        self.rotation
     }
 
     /// Complete copied linear velocity.
@@ -69,6 +76,15 @@ impl BodyState {
     pub fn set_position(&mut self, position: Vector) -> Result<(), PhysicsError> {
         finite(&position)?;
         self.position = position;
+        Ok(())
+    }
+
+    /// Replace this copy's rotation with a normalized value, preserving its sign.
+    /// # Errors
+    /// Returns Numeric for a zero or nonfinite input without changing the copy.
+    pub fn set_rotation(&mut self, rotation: Quaternion) -> Result<(), PhysicsError> {
+        let normalized = normalize(rotation)?;
+        self.rotation = normalized;
         Ok(())
     }
 
