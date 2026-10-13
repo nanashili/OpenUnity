@@ -5,6 +5,7 @@ mod fields;
 mod identity;
 mod source_value;
 
+pub(crate) use extraction::extract_scene_cameras_from_documents;
 pub use extraction::{
     CameraSourceRecord, SceneCameraSourceRecords, UninterpretedCameraField, extract_scene_cameras,
 };

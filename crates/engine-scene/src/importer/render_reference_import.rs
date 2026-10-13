@@ -5,7 +5,8 @@ use super::{
 };
 use crate::{
     MAX_DEPTH, MAX_OBJECTS, Result, SceneError, ScenePlan,
-    render_reference_extraction::SceneRenderReferences, yaml,
+    render_reference_extraction::{SceneCameraSourceRecords, SceneRenderReferences},
+    yaml,
 };
 use engine_assets::{Guid, MetadataIndex};
 use serde_json::Value;
@@ -27,11 +28,26 @@ pub struct ProjectRenderImport {
     pub metadata: MetadataIndex,
 }
 
+/// Complete render and serialized Camera source views from one scene import.
+pub struct ProjectRenderSourceImport {
+    /// The validated plan and render-reference data used by the player binder.
+    pub render: ProjectRenderImport,
+    /// Serialized Camera values retained from the same parsed scene snapshot.
+    pub cameras: SceneCameraSourceRecords,
+}
+
 struct PreparedImport {
     scene: PathBuf,
     metadata: MetadataIndex,
     scripts: BTreeMap<Guid, bindings::Binding>,
     settings: Value,
+}
+
+struct ImportedRenderViews {
+    plan: ScenePlan,
+    render_references: SceneRenderReferences,
+    camera_sources: Option<SceneCameraSourceRecords>,
+    metadata: MetadataIndex,
 }
 
 pub(super) fn import_project_legacy(
@@ -64,17 +80,68 @@ pub fn import_project_with_render_references(
     scene: &Path,
     bindings: &Path,
 ) -> Result<ProjectRenderImport> {
+    let views =
+        import_project_with_render_views(root, scene, bindings, RenderDocumentHandling::Extracted)?;
+    Ok(ProjectRenderImport {
+        plan: views.plan,
+        render_references: views.render_references,
+        metadata: views.metadata,
+    })
+}
+
+/// Import render references and serialized Camera source records from one scene snapshot.
+///
+/// This route accepts Camera documents and preserves their source values; it does not
+/// construct runtime Camera objects or derive projection settings from those values.
+pub fn import_project_with_render_sources(
+    root: &Path,
+    scene: &Path,
+    bindings: &Path,
+) -> Result<ProjectRenderSourceImport> {
+    let views = import_project_with_render_views(
+        root,
+        scene,
+        bindings,
+        RenderDocumentHandling::ExtractedWithCameras,
+    )?;
+    let cameras = views
+        .camera_sources
+        .ok_or_else(|| SceneError::new("missing Camera source extraction result"))?;
+
+    Ok(ProjectRenderSourceImport {
+        render: ProjectRenderImport {
+            plan: views.plan,
+            render_references: views.render_references,
+            metadata: views.metadata,
+        },
+        cameras,
+    })
+}
+
+fn import_project_with_render_views(
+    root: &Path,
+    scene: &Path,
+    bindings: &Path,
+    document_handling: RenderDocumentHandling,
+) -> Result<ImportedRenderViews> {
     let prepared = prepare_import(root, scene, bindings)?;
     let documents = yaml::parse(&read(&prepared.scene)?)?;
+
     let render_references =
         crate::render_reference_extraction::extract_scene_render_references_from_documents(
             &documents,
         );
+    let camera_sources = if document_handling.extracts_cameras() {
+        Some(crate::render_reference_extraction::extract_scene_cameras_from_documents(&documents))
+    } else {
+        None
+    };
+
     let mut conversion = DocumentConversion::new(
         &prepared.scene,
         &prepared.scripts,
         prepared.settings,
-        RenderDocumentHandling::Extracted,
+        document_handling,
     )?;
 
     for document in documents {
@@ -82,11 +149,15 @@ pub fn import_project_with_render_references(
     }
 
     let plan = conversion.finish()?;
-    let render_references = render_references?;
 
-    Ok(ProjectRenderImport {
+    // Resolve views in contract order after scene conversion succeeds.
+    let render_references = render_references?;
+    let camera_sources = camera_sources.transpose()?;
+
+    Ok(ImportedRenderViews {
         plan,
         render_references,
+        camera_sources,
         metadata: prepared.metadata,
     })
 }

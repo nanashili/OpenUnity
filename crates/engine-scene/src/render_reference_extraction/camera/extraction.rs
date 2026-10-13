@@ -47,8 +47,14 @@ pub struct SceneCameraSourceRecords {
 /// Extract bounded Camera source values while validating scene-local ownership links.
 pub fn extract_scene_cameras(scene_bytes: &[u8]) -> Result<SceneCameraSourceRecords> {
     let documents = yaml::parse(scene_bytes)?;
-    let owner_by_component = super::super::owners::owner_by_component(&documents)?;
-    let documents_by_id = index_documents(&documents);
+    extract_scene_cameras_from_documents(&documents)
+}
+
+pub(crate) fn extract_scene_cameras_from_documents(
+    documents: &[Document],
+) -> Result<SceneCameraSourceRecords> {
+    let owner_by_component = super::super::owners::owner_by_component(documents)?;
+    let documents_by_id = index_documents(documents);
     let cameras = documents
         .iter()
         .filter(|document| document.class_id == CAMERA_CLASS_ID)

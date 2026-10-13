@@ -18,4 +18,7 @@ pub fn import_project(root: &Path, scene: &Path, bindings: &Path) -> Result<Scen
     render_reference_import::import_project_legacy(root, scene, bindings)
 }
 
-pub use render_reference_import::{ProjectRenderImport, import_project_with_render_references};
+pub use render_reference_import::{
+    ProjectRenderImport, ProjectRenderSourceImport, import_project_with_render_references,
+    import_project_with_render_sources,
+};

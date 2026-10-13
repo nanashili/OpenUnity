@@ -11,7 +11,10 @@ pub use engine_serialization::{
     FieldPlan, FieldValue, GameObjectPlan, MAX_DEPTH, MAX_FIELDS, MAX_INPUT_BYTES, MAX_OBJECTS,
     MAX_STRING_BYTES, SceneError, ScenePlan, ScriptPlan, TransformPlan, parse_plan,
 };
-pub use importer::{ProjectRenderImport, import_project, import_project_with_render_references};
+pub use importer::{
+    ProjectRenderImport, ProjectRenderSourceImport, import_project,
+    import_project_with_render_references, import_project_with_render_sources,
+};
 pub use render_binding_owners::validate_render_binding_owners;
 pub use render_reference_extraction::{
     CameraField, CameraSourceProperties, CameraSourceRecord, CameraSourceValue, MaterialField,

@@ -16,16 +16,27 @@ pub(super) struct DocumentConversion<'a> {
     render_documents: RenderDocumentHandling,
     settings: Value,
     ids: BTreeSet<i64>,
-    render_component_ids: BTreeSet<i64>,
+    extracted_component_ids: BTreeSet<i64>,
     settings_seen: BTreeSet<i64>,
     root_seen: bool,
     plan: ScenePlan,
 }
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Eq, PartialEq)]
 pub(super) enum RenderDocumentHandling {
     Reject,
     Extracted,
+    ExtractedWithCameras,
+}
+
+impl RenderDocumentHandling {
+    pub(super) fn extracts_render_components(self) -> bool {
+        matches!(self, Self::Extracted | Self::ExtractedWithCameras)
+    }
+
+    pub(super) fn extracts_cameras(self) -> bool {
+        matches!(self, Self::ExtractedWithCameras)
+    }
 }
 
 impl<'a> DocumentConversion<'a> {
@@ -40,7 +51,7 @@ impl<'a> DocumentConversion<'a> {
             render_documents,
             settings,
             ids: BTreeSet::new(),
-            render_component_ids: BTreeSet::new(),
+            extracted_component_ids: BTreeSet::new(),
             settings_seen: BTreeSet::new(),
             root_seen: false,
             plan: ScenePlan {
@@ -73,19 +84,16 @@ impl<'a> DocumentConversion<'a> {
             1 => "GameObject",
             4 => "Transform",
             114 => "MonoBehaviour",
-            23 if matches!(self.render_documents, RenderDocumentHandling::Extracted) => {
-                "MeshRenderer"
-            }
-            33 if matches!(self.render_documents, RenderDocumentHandling::Extracted) => {
-                "MeshFilter"
-            }
+            20 if self.render_documents.extracts_cameras() => "Camera",
+            23 if self.render_documents.extracts_render_components() => "MeshRenderer",
+            33 if self.render_documents.extracts_render_components() => "MeshFilter",
             1660057539 => "SceneRoots",
             _ => return Err(SceneError::new("unsupported scene classID")),
         };
         keys(top, &[kind])?;
 
-        if matches!(doc.class_id, 23 | 33) {
-            self.render_component_ids.insert(doc.file_id);
+        if matches!(doc.class_id, 20 | 23 | 33) {
+            self.extracted_component_ids.insert(doc.file_id);
             return Ok(());
         }
 
@@ -121,19 +129,19 @@ impl<'a> DocumentConversion<'a> {
             return Err(SceneError::new("missing SceneRoots"));
         }
 
-        if matches!(self.render_documents, RenderDocumentHandling::Extracted) {
-            self.remove_extracted_render_components();
+        if self.render_documents.extracts_render_components() {
+            self.remove_extracted_components();
         }
 
         self.plan.validate()?;
         Ok(self.plan)
     }
 
-    fn remove_extracted_render_components(&mut self) {
+    fn remove_extracted_components(&mut self) {
         for game_object in &mut self.plan.game_objects {
             game_object
                 .components
-                .retain(|component_id| !self.render_component_ids.contains(component_id));
+                .retain(|component_id| !self.extracted_component_ids.contains(component_id));
         }
     }
 }

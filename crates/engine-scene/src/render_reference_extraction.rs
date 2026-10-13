@@ -7,6 +7,7 @@ mod pointers;
 
 use crate::SceneError;
 
+pub(crate) use camera::extract_scene_cameras_from_documents;
 pub use camera::{
     CameraField, CameraSourceProperties, CameraSourceRecord, CameraSourceValue,
     SceneCameraSourceRecords, TransformSourcePose, UninterpretedCameraField, extract_scene_cameras,
