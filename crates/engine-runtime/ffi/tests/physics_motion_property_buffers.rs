@@ -105,3 +105,46 @@ fn foreign_context_reads_reject_handles_and_preserve_output_sentinels() {
     assert_eq!(ou_runtime_destroy(local), 0);
     assert_eq!(ou_runtime_destroy(foreign), 0);
 }
+
+#[test]
+fn angular_vector_transport_copies_all_components_without_replacing_other_vectors() {
+    // Selector 3 is a distinct ABI route. This protects copying, selector routing,
+    // and failed transport publication; owned-value tests cannot observe buffers.
+    let runtime = ou_runtime_create();
+    let body = committed_body(runtime);
+    let expected = [1.25_f32, -2.5, 3.75];
+    let mut input = expected;
+    let mut output = [41.0_f32; 3];
+
+    assert_eq!(
+        unsafe { ou_rigidbody_vector_write(runtime, body, 3, input.as_ptr(), 3) },
+        0
+    );
+    input.fill(99.0);
+    assert_eq!(
+        unsafe { ou_rigidbody_vector_read(runtime, body, 3, output.as_mut_ptr(), 3) },
+        0
+    );
+    assert_eq!(output, expected);
+
+    output.fill(88.0);
+    let invalid = [7.0_f32, 8.0, f32::INFINITY];
+    assert_eq!(
+        unsafe { ou_rigidbody_vector_write(runtime, body, 3, invalid.as_ptr(), 3) },
+        INVALID_NUMERIC
+    );
+    assert_eq!(
+        unsafe { ou_rigidbody_vector_read(runtime, body, 3, output.as_mut_ptr(), 3) },
+        0
+    );
+    assert_eq!(output, expected);
+
+    for selector in [1, 2] {
+        assert_eq!(
+            unsafe { ou_rigidbody_vector_read(runtime, body, selector, output.as_mut_ptr(), 3) },
+            0
+        );
+        assert_eq!(output, [0.0; 3]);
+    }
+    assert_eq!(ou_runtime_destroy(runtime), 0);
+}

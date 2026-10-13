@@ -142,7 +142,6 @@ pub(crate) fn validate_profile(profile: BodyConfiguration) -> Result<(), Physics
     if profile.mass() <= 0.0
         || profile.is_kinematic()
         || profile.detect_collisions()
-        || profile.angular_velocity().iter().any(|value| *value != 0.0)
         || profile.linear_damping() != 0.0
         || profile.angular_damping() != 0.0
         || profile.sleep_threshold() != 0.0

@@ -81,6 +81,9 @@ fn numeric_and_unsupported_profiles_fail_without_partial_replacement() {
     let mut configuration = BodyConfiguration::default();
     configuration.set_mass(5.0).unwrap();
     configuration.set_use_gravity(false);
+    configuration
+        .set_angular_velocity([1.25, -2.0, 3.5])
+        .unwrap();
     let previous = configuration;
 
     for mass in [0.0, -1.0, f32::NAN, f32::INFINITY] {
@@ -92,11 +95,7 @@ fn numeric_and_unsupported_profiles_fail_without_partial_replacement() {
         Err(PhysicsError::Numeric)
     );
     assert_eq!(configuration, previous);
-    assert_eq!(
-        configuration.set_angular_velocity([0.0, 0.0, 1.0]),
-        Err(PhysicsError::Unsupported)
-    );
-    assert_eq!(configuration, previous);
+    assert_eq!(configuration.angular_velocity(), [1.25, -2.0, 3.5]);
     assert_eq!(
         configuration.set_is_kinematic(true),
         Err(PhysicsError::Unsupported)

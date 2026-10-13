@@ -47,7 +47,7 @@ impl BodyConfiguration {
         self.use_gravity
     }
 
-    /// Stored zero angular velocity; rotation integration is unsupported.
+    /// Stored finite angular velocity; rotation integration is unsupported.
     pub fn angular_velocity(self) -> Vector {
         self.angular_velocity
     }

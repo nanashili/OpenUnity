@@ -29,14 +29,11 @@ impl BodyConfiguration {
         self.use_gravity = enabled;
     }
 
-    /// Store zero angular velocity without enabling rotation integration.
+    /// Store finite angular velocity without enabling rotation integration.
     /// # Errors
-    /// Returns Numeric for nonfinite inputs, Unsupported for finite nonzero inputs.
+    /// Returns Numeric for nonfinite inputs.
     pub fn set_angular_velocity(&mut self, velocity: Vector) -> Result<(), PhysicsError> {
         finite(&velocity)?;
-        if velocity.iter().any(|value| *value != 0.0) {
-            return Err(PhysicsError::Unsupported);
-        }
         self.angular_velocity = velocity;
         Ok(())
     }

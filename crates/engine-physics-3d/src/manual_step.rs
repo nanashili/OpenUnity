@@ -30,7 +30,8 @@ impl MotionWorld {
     /// Runtime owns Script-mode, active-owner and Transform admission. The
     /// backend validates duration/gravity even when no committed body exists.
     /// # Errors
-    /// Returns Numeric for invalid inputs/result overflow, or revision exhaustion.
+    /// Returns Unsupported for nonzero angular velocity, Numeric for invalid
+    /// inputs/result overflow, or revision exhaustion.
     pub fn prepare_step(
         &self,
         duration: f32,
@@ -44,6 +45,7 @@ impl MotionWorld {
 
         let candidate = match self.slot {
             Some(BodySlot::Committed(body)) => {
+                reject_unsupported_angular_motion(body.state)?;
                 self.next_revision()?;
                 Some(advance(body, duration, gravity)?)
             }
@@ -72,6 +74,14 @@ impl MotionWorld {
         }
         Ok(())
     }
+}
+
+fn reject_unsupported_angular_motion(state: BodyState) -> Result<(), PhysicsError> {
+    let angular_velocity = state.configuration().angular_velocity();
+    if angular_velocity.iter().any(|component| *component != 0.0) {
+        return Err(PhysicsError::Unsupported);
+    }
+    Ok(())
 }
 
 fn advance(
