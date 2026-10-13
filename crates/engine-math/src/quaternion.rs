@@ -3,14 +3,17 @@
 use crate::vector_arithmetic::scalar;
 use crate::{MathError, Quaternion, Vector, finite, vector};
 
-/// Normalize a quaternion using a binary64 length.
+/// Normalize a quaternion using exact component squares and a binary64 length.
 /// # Errors
 /// Returns a numeric error for nonfinite components or a zero length.
 pub fn normalize(q: Quaternion) -> Result<Quaternion, MathError> {
     finite(&q)?;
     let length = q
         .iter()
-        .map(|value| f64::from(*value).powi(2))
+        .map(|value| {
+            let component = f64::from(*value);
+            component * component
+        })
         .sum::<f64>()
         .sqrt();
     if length == 0.0 {
