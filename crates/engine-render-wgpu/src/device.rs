@@ -12,10 +12,17 @@ mod scoped_diagnostics;
 #[path = "error_reconciliation.rs"]
 mod error_reconciliation;
 
-use adapter_selection::{AdapterClass, classify_adapter, validate_adapter_target_formats};
+#[path = "device/surface_setup.rs"]
+mod surface_setup;
+
+#[path = "device/creation.rs"]
+mod creation;
+
 use error_reconciliation::reconcile_error_state;
 
+use creation::create_device;
 pub(crate) use scoped_diagnostics::{ScopedGpuClass, ScopedGpuDiagnostics};
+pub(crate) use surface_setup::create_for_window;
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub(crate) enum AdapterPolicy {
@@ -26,6 +33,7 @@ pub(crate) enum AdapterPolicy {
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub(crate) enum DeviceError {
     AdapterUnavailable,
+    SurfaceCreation(String),
     SoftwareAdapterRejected,
     UnsupportedTargetFormat(wgpu::TextureFormat),
     InvalidTimeout,
@@ -65,50 +73,7 @@ pub(crate) struct DeviceOwner {
 
 impl DeviceOwner {
     pub(crate) fn create(policy: AdapterPolicy) -> Result<Self, DeviceError> {
-        let instance = wgpu::Instance::new(&wgpu::InstanceDescriptor {
-            backends: wgpu::Backends::all(),
-            ..Default::default()
-        });
-        let options = wgpu::RequestAdapterOptions {
-            power_preference: wgpu::PowerPreference::HighPerformance,
-            force_fallback_adapter: matches!(policy, AdapterPolicy::Software),
-            compatible_surface: None,
-        };
-        let adapter = pollster::block_on(instance.request_adapter(&options))
-            .map_err(|_| DeviceError::AdapterUnavailable)?;
-        let adapter_info = adapter.get_info();
-
-        let class = classify_adapter(adapter_info.device_type)
-            .ok_or(DeviceError::SoftwareAdapterRejected)?;
-        let expected = if policy == AdapterPolicy::Hardware {
-            AdapterClass::Hardware
-        } else {
-            AdapterClass::Software
-        };
-        if class != expected {
-            return Err(DeviceError::SoftwareAdapterRejected);
-        }
-
-        validate_adapter_target_formats(&adapter).map_err(DeviceError::UnsupportedTargetFormat)?;
-
-        let failure = Arc::new(Mutex::new(FailureState { error: None }));
-        let descriptor = wgpu::DeviceDescriptor {
-            label: Some("openunity-render-device"),
-            required_features: wgpu::Features::empty(),
-            required_limits: adapter.limits(),
-            ..Default::default()
-        };
-        let (device, queue) = pollster::block_on(adapter.request_device(&descriptor))
-            .map_err(|error| DeviceError::DeviceRequest(error.to_string()))?;
-
-        install_failure_callbacks(&device, &failure);
-        Ok(Self {
-            instance,
-            adapter,
-            device,
-            queue,
-            failure,
-        })
+        create_device(policy)
     }
 
     pub(crate) fn poll_until_submission(
@@ -133,6 +98,10 @@ impl DeviceOwner {
 
     pub(crate) fn adapter_info(&self) -> wgpu::AdapterInfo {
         self.adapter.get_info()
+    }
+
+    pub(crate) fn adapter(&self) -> &wgpu::Adapter {
+        &self.adapter
     }
 
     pub(crate) fn device(&self) -> &wgpu::Device {

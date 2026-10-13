@@ -8,6 +8,9 @@ mod pipeline;
 mod readback;
 mod renderer;
 mod submission;
+mod surface_renderer;
+mod surface_state;
 mod targets;
 
 pub use renderer::WgpuRenderer;
+pub use surface_renderer::WgpuSurfaceRenderer;

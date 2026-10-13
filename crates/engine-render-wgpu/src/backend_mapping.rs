@@ -16,6 +16,7 @@ impl From<DeviceError> for RenderError {
 pub(crate) fn map_device_error(error: DeviceError) -> RenderError {
     match error {
         DeviceError::AdapterUnavailable => RenderError::AdapterUnavailable,
+        DeviceError::SurfaceCreation(_) => RenderError::SurfaceCreation,
         DeviceError::SoftwareAdapterRejected | DeviceError::UnsupportedTargetFormat(_) => {
             RenderError::UnsupportedCapabilities
         }

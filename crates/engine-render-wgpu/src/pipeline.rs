@@ -64,10 +64,18 @@ pub(crate) struct OpaqueUnlitPipeline {
 impl OpaqueUnlitPipeline {
     /// Build the unlit pipeline through the device owner's error boundary.
     pub(crate) fn create(device: &DeviceOwner) -> Result<Self, DeviceError> {
-        device.with_error_scopes(|gpu| Ok(Self::create_gpu_objects(gpu)))
+        Self::create_for_format(device, COLOR_FORMAT)
     }
 
-    fn create_gpu_objects(device: &wgpu::Device) -> Self {
+    /// Build an unlit pipeline for a presentation surface's selected format.
+    pub(crate) fn create_for_format(
+        device: &DeviceOwner,
+        color_format: wgpu::TextureFormat,
+    ) -> Result<Self, DeviceError> {
+        device.with_error_scopes(|gpu| Ok(Self::create_gpu_objects(gpu, color_format)))
+    }
+
+    fn create_gpu_objects(device: &wgpu::Device, color_format: wgpu::TextureFormat) -> Self {
         let shader = device.create_shader_module(wgpu::ShaderModuleDescriptor {
             label: Some("openunity opaque unlit shader"),
             source: wgpu::ShaderSource::Wgsl(include_str!("unlit.wgsl").into()),
@@ -95,7 +103,7 @@ impl OpaqueUnlitPipeline {
                 entry_point: Some("fragment_main"),
                 compilation_options: wgpu::PipelineCompilationOptions::default(),
                 targets: &[Some(wgpu::ColorTargetState {
-                    format: COLOR_FORMAT,
+                    format: color_format,
                     blend: None,
                     write_mask: wgpu::ColorWrites::ALL,
                 })],

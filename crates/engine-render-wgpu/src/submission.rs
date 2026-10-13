@@ -34,6 +34,35 @@ pub(crate) struct FrameSubmissionContext<'frame> {
     clear: wgpu::Color,
 }
 
+pub(crate) struct SurfaceSubmissionContext<'frame> {
+    device: &'frame wgpu::Device,
+    queue: &'frame wgpu::Queue,
+    color_view: &'frame wgpu::TextureView,
+    depth_view: &'frame wgpu::TextureView,
+    pipeline: &'frame wgpu::RenderPipeline,
+    clear: wgpu::Color,
+}
+
+impl<'frame> SurfaceSubmissionContext<'frame> {
+    pub(crate) fn new(
+        device: &'frame wgpu::Device,
+        queue: &'frame wgpu::Queue,
+        color_view: &'frame wgpu::TextureView,
+        depth_view: &'frame wgpu::TextureView,
+        pipeline: &'frame wgpu::RenderPipeline,
+        clear: wgpu::Color,
+    ) -> Self {
+        Self {
+            device,
+            queue,
+            color_view,
+            depth_view,
+            pipeline,
+            clear,
+        }
+    }
+}
+
 impl<'frame> FrameSubmissionContext<'frame> {
     pub(crate) fn new(
         device: &'frame wgpu::Device,
@@ -58,6 +87,58 @@ pub(crate) struct FrameSubmission<'draw> {
     pub(crate) copied_readback: bool,
     _retained_vertex_buffer: Option<&'draw wgpu::Buffer>,
     _retained_index_buffer: Option<&'draw wgpu::Buffer>,
+}
+
+/// Submit a complete surface frame in one pass and one queue submission.
+pub(crate) fn submit_surface_frame(
+    context: &SurfaceSubmissionContext<'_>,
+    draws: &[PreparedDraw<'_>],
+) -> Result<usize, SubmissionError> {
+    for draw in draws {
+        draw.validate()?;
+    }
+
+    let mut encoder = context
+        .device
+        .create_command_encoder(&wgpu::CommandEncoderDescriptor {
+            label: Some("openunity-surface-frame"),
+        });
+    {
+        let color_attachment = wgpu::RenderPassColorAttachment {
+            view: context.color_view,
+            depth_slice: None,
+            resolve_target: None,
+            ops: wgpu::Operations {
+                load: wgpu::LoadOp::Clear(context.clear),
+                store: wgpu::StoreOp::Store,
+            },
+        };
+        let depth_attachment = wgpu::RenderPassDepthStencilAttachment {
+            view: context.depth_view,
+            depth_ops: Some(wgpu::Operations {
+                load: wgpu::LoadOp::Clear(1.0),
+                store: wgpu::StoreOp::Store,
+            }),
+            stencil_ops: None,
+        };
+        let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
+            label: Some("openunity-surface-render-pass"),
+            color_attachments: &[Some(color_attachment)],
+            depth_stencil_attachment: Some(depth_attachment),
+            occlusion_query_set: None,
+            timestamp_writes: None,
+        });
+        pass.set_pipeline(context.pipeline);
+        for draw in draws {
+            pass.set_vertex_buffer(0, draw.vertex_buffer.slice(..));
+            pass.set_index_buffer(draw.index_buffer.slice(..), wgpu::IndexFormat::Uint32);
+            pass.draw_indexed(0..draw.index_count, 0, 0..1);
+        }
+    }
+
+    // Live presentation stays asynchronous and does not wait for GPU completion.
+    let _submission = context.queue.submit(std::iter::once(encoder.finish()));
+    Ok(draws.len())
 }
 
 /// Submit one ordered draw, or an empty clear step, against shared targets.

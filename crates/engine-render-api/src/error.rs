@@ -41,6 +41,29 @@ pub enum RenderError {
     UnsupportedCapabilities,
     /// Device creation was rejected.
     DeviceRequest,
+    /// A native window surface could not be created for presentation.
+    SurfaceCreation,
+    /// The frame dimensions differ from the configured native window surface.
+    SurfaceSizeMismatch {
+        /// Width of the submitted frame in pixels.
+        frame_width: u32,
+        /// Height of the submitted frame in pixels.
+        frame_height: u32,
+        /// Width of the configured surface in pixels.
+        surface_width: u32,
+        /// Height of the configured surface in pixels.
+        surface_height: u32,
+    },
+    /// The presentation surface was lost after one reconfigure attempt.
+    SurfaceLost,
+    /// The presentation surface remains outdated after one reconfigure attempt.
+    SurfaceOutdated,
+    /// Acquiring a surface frame timed out.
+    SurfaceTimeout,
+    /// The presentation surface could not allocate a frame.
+    SurfaceOutOfMemory,
+    /// Surface frame acquisition failed for an unspecified reason.
+    SurfaceUnavailable,
     /// Resource allocation failed.
     Allocation,
     /// Shader or pipeline validation failed.
@@ -63,6 +86,7 @@ impl RenderError {
             Self::AdapterUnavailable
                 | Self::UnsupportedCapabilities
                 | Self::DeviceRequest
+                | Self::SurfaceOutOfMemory
                 | Self::Allocation
                 | Self::Pipeline
                 | Self::DeviceLost

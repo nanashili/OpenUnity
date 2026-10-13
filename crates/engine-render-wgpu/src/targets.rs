@@ -84,3 +84,34 @@ impl FrameTargets {
         })
     }
 }
+
+/// Depth attachment paired with the color texture owned by a presentation surface.
+pub(crate) struct DepthTarget {
+    _texture: wgpu::Texture,
+    pub(crate) view: wgpu::TextureView,
+}
+
+impl DepthTarget {
+    pub(crate) fn create(device: &wgpu::Device, size: TargetSize) -> Self {
+        let texture = device.create_texture(&wgpu::TextureDescriptor {
+            label: Some("openunity-surface-depth"),
+            size: wgpu::Extent3d {
+                width: size.width(),
+                height: size.height(),
+                depth_or_array_layers: 1,
+            },
+            mip_level_count: 1,
+            sample_count: 1,
+            dimension: wgpu::TextureDimension::D2,
+            format: wgpu::TextureFormat::Depth32Float,
+            usage: wgpu::TextureUsages::RENDER_ATTACHMENT,
+            view_formats: &[],
+        });
+        let view = texture.create_view(&wgpu::TextureViewDescriptor::default());
+
+        Self {
+            _texture: texture,
+            view,
+        }
+    }
+}
