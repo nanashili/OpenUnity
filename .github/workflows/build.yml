@@ -107,6 +107,11 @@ jobs:
           BUILD_TARGET: ${{ matrix.target }}
         run: cargo build --workspace --release --locked --target "$BUILD_TARGET"
 
+      - name: Run focused scene and player regressions
+        env:
+          BUILD_TARGET: ${{ matrix.target }}
+        run: cargo test -p engine-scene -p openunity-player --release --locked --target "$BUILD_TARGET"
+
       - name: Build managed assemblies
         run: |
           dotnet build managed/Hosting/OpenUnity.ManagedHosting.csproj \
