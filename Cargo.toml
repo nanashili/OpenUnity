@@ -51,6 +51,7 @@ engine-runtime-ffi = { path = "crates/engine-runtime/ffi" }
 
 serde = { version = "=1.0.228", features = ["derive"] }
 serde_json = { version = "=1.0.145", features = ["raw_value"] }
+yaml-rust2 = "=0.13.0"
 
 bytemuck = { version = "=1.25.2", features = ["derive"] }
 pollster = "=0.4.0"

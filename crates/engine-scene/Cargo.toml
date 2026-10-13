@@ -10,6 +10,7 @@ engine-assets.workspace = true
 engine-serialization.workspace = true
 serde.workspace = true
 serde_json.workspace = true
+yaml-rust2.workspace = true
 
 [lints]
 workspace = true
