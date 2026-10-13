@@ -1,12 +1,16 @@
 //! Read-only opening, required path checks and bounded version parsing.
 
+mod package_sources;
+
 use std::fs::{self, File};
 use std::io::Read;
 use std::path::{Component, Path, PathBuf};
 
 use super::discovery::discover_assets;
 use super::index::{ProjectIndex, ProjectSnapshotId};
+use super::packages::discover_embedded_packages;
 use super::{MAX_PROJECT_VERSION_BYTES, Project, ProjectDiagnostic, ProjectEntry, ProjectError};
+use package_sources::discover_package_sources;
 
 impl Project {
     /// Opens an existing source project without writing or executing its contents.
@@ -15,17 +19,24 @@ impl Project {
     /// hostile filesystem mutation is outside this reader's guarantee.
     pub fn open(path: impl AsRef<Path>) -> Result<Self, ProjectError> {
         let root = resolve_project_root(path.as_ref())?;
+        let assets_root = required_path(&root, Path::new("Assets"), true)?;
         let editor_version = read_project_version(&root)?;
         let (entries, diagnostics) = discover_assets(&root);
         let index = build_project_index(&root, &entries)?;
+        let package_catalog = discover_embedded_packages(&root);
+        let (packages, package_diagnostics) =
+            discover_package_sources(&root, entries.len(), package_catalog);
 
         Ok(Self {
             root,
             editor_version,
+            assets_root,
             entries,
             diagnostics,
             index,
             snapshot_id: ProjectSnapshotId::new(),
+            packages,
+            package_diagnostics,
         })
     }
 
@@ -98,7 +109,6 @@ fn reject_symlink_components(absolute: &Path) -> Result<(), ProjectError> {
 }
 
 fn read_project_version(root: &Path) -> Result<String, ProjectError> {
-    required_path(root, Path::new("Assets"), true)?;
     required_path(root, Path::new("ProjectSettings"), true)?;
 
     let version_path = required_path(root, Path::new("ProjectSettings/ProjectVersion.txt"), false)?;
