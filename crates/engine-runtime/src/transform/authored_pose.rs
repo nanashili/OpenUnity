@@ -8,6 +8,7 @@
 /// Pose edits that can affect an attached native body.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub(crate) enum TransformEdit {
+    Position,
     Rotation,
     Scale,
 }

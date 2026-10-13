@@ -90,6 +90,13 @@ impl Clock {
             .is_some_and(|frame| matches!(frame.fixed, FixedState::Active(_)))
     }
 
+    pub(crate) fn active_fixed_timestep(&self) -> Option<f32> {
+        match self.frame?.fixed {
+            FixedState::Active(plan) => Some(plan.step),
+            FixedState::Unplanned | FixedState::Ready(_) | FixedState::Complete => None,
+        }
+    }
+
     pub(crate) fn fixed_complete(&self) -> bool {
         self.frame
             .is_some_and(|frame| matches!(frame.fixed, FixedState::Complete))

@@ -17,6 +17,7 @@ mod object_access;
 mod object_lifetime;
 mod physics;
 mod physics_gravity;
+mod physics_scene;
 mod scene;
 mod scene_snapshot;
 mod timing;
@@ -30,6 +31,7 @@ pub use input::{InputPreparationError, RuntimeInputError};
 pub use lifecycle::LifecycleEvent;
 pub use navigation::{NavigationRoute, RuntimeNavigationError};
 pub use object_access::MAX_OBJECT_NAME_BYTES;
+pub use physics_scene::{PhysicsSceneBodyState, PhysicsSceneDimension};
 pub use scene_snapshot::{
     SNAPSHOT_MAX_ROWS, SNAPSHOT_ROW_STRIDE, SNAPSHOT_VERSION, SceneSnapshot, SceneSnapshotRow,
     SnapshotState,

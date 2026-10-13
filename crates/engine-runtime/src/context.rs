@@ -4,7 +4,7 @@ use crate::physics;
 use crate::{
     input, lifecycle,
     math::{Quaternion, Vector},
-    scene, timing,
+    physics_scene, scene, timing,
 };
 use engine_object::{ObjectId, ObjectStore};
 use engine_physics_api::GravityConfiguration;
@@ -31,6 +31,7 @@ pub struct Runtime {
     pub(super) clock: timing::Clock,
     pub(super) gravity: GravityConfiguration,
     pub(super) physics: physics::PhysicsState,
+    pub(super) collision_scene: physics_scene::CollisionSceneState,
 }
 
 impl Default for Runtime {
@@ -44,6 +45,7 @@ impl Default for Runtime {
             clock: timing::Clock::default(),
             gravity: GravityConfiguration::default(),
             physics: physics::PhysicsState::default(),
+            collision_scene: physics_scene::CollisionSceneState::default(),
         }
     }
 }

@@ -147,6 +147,10 @@ impl Runtime {
                     value
                 };
 
+                if matches!(property, 1 | 4) {
+                    self.physics_validate_transform_edit(id, TransformEdit::Position)?;
+                }
+
                 if property == 3 {
                     self.physics_validate_transform_edit(id, TransformEdit::Scale)?;
                 }

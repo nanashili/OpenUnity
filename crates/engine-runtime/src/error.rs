@@ -1,6 +1,6 @@
 //! Failure taxonomy for the independently implemented runtime contracts.
 
-use engine_physics_api::{PhysicsError, QueryError};
+use engine_physics_api::{CollisionError, PhysicsError, QueryError};
 
 /// Independent typed-extension failures; these are not Unity native statuses.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -55,6 +55,19 @@ impl From<QueryError> for RuntimeError {
             QueryError::Capacity => Self::PhysicsUnsupported,
             QueryError::DuplicateOwner => Self::Lifecycle,
             QueryError::RevisionExhausted => Self::CountOverflow,
+        }
+    }
+}
+
+impl From<CollisionError> for RuntimeError {
+    fn from(error: CollisionError) -> Self {
+        match error {
+            CollisionError::InvalidNumber
+            | CollisionError::InvalidDimensions
+            | CollisionError::InvalidTimestep => Self::Numeric,
+            CollisionError::InvalidBody => Self::InvalidObject,
+            CollisionError::BodyAlreadyExists => Self::Lifecycle,
+            CollisionError::Capacity => Self::PhysicsUnsupported,
         }
     }
 }

@@ -65,6 +65,9 @@ impl Runtime {
         if self.objects.kind(owner)? != ObjectKind::GameObject {
             return Err(RuntimeError::InvalidKind);
         }
+        if self.collision_scene.contains_owner(owner) {
+            return Err(RuntimeError::PhysicsUnsupported);
+        }
         if self.owner_pending_destroy(owner)? {
             return Err(RuntimeError::Lifecycle);
         }
@@ -84,6 +87,9 @@ impl Runtime {
     ) -> Result<(), RuntimeError> {
         if self.objects.kind(owner)? != ObjectKind::GameObject {
             return Err(RuntimeError::InvalidKind);
+        }
+        if self.collision_scene.contains_owner(owner) {
+            return Err(RuntimeError::PhysicsUnsupported);
         }
         if self.gameobject_transform(owner)? != transform {
             return Err(RuntimeError::InvalidObject);
@@ -172,10 +178,15 @@ impl Runtime {
         transform_id: ObjectId,
         edit: TransformEdit,
     ) -> Result<(), RuntimeError> {
+        if self.collision_scene.contains_transform(transform_id) {
+            return Err(RuntimeError::PhysicsUnsupported);
+        }
+
         let Some(_attachment) = self.physics.attachment_by_transform(transform_id) else {
             return Ok(());
         };
         match edit {
+            TransformEdit::Position => Ok(()),
             TransformEdit::Rotation | TransformEdit::Scale => Err(RuntimeError::PhysicsUnsupported),
         }
     }
@@ -189,10 +200,17 @@ impl Runtime {
             .physics
             .attachment_by_transform(child_transform)
             .is_some();
+        let child_has_collision_body = self.collision_scene.contains_transform(child_transform);
         let parent_has_body =
             new_parent.is_some_and(|parent| self.physics.attachment_by_transform(parent).is_some());
+        let parent_has_collision_body =
+            new_parent.is_some_and(|parent| self.collision_scene.contains_transform(parent));
 
-        if child_has_body || parent_has_body {
+        if child_has_body
+            || child_has_collision_body
+            || parent_has_body
+            || parent_has_collision_body
+        {
             return Err(RuntimeError::PhysicsUnsupported);
         }
         Ok(())

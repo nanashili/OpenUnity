@@ -99,6 +99,14 @@ impl Runtime {
         } else {
             Vec::new()
         };
+
+        if active && self.physics_scene_dimension().is_some() {
+            let timestep = clock
+                .active_fixed_timestep()
+                .ok_or(RuntimeError::Lifecycle)?;
+            self.physics_scene_step(timestep)?;
+        }
+
         self.clock = clock;
         self.lifecycle.snapshot = snapshot;
         self.lifecycle.cursor = 0;

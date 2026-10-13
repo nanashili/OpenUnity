@@ -25,7 +25,8 @@ impl Runtime {
 
     /// Change activity; callback eligibility is reevaluated by the mutation pump.
     /// # Errors
-    /// Rejects absent/wrong owners, pending destruction, or faulted dispatch.
+    /// Rejects absent/wrong owners, pending destruction, faulted dispatch, or
+    /// deactivation of a collision-body owner.
     pub fn gameobject_set_active(
         &mut self,
         owner: ObjectId,
@@ -35,6 +36,9 @@ impl Runtime {
         self.lifecycle_ready()?;
         if self.owner_pending_destroy(owner)? {
             return Err(RuntimeError::Lifecycle);
+        }
+        if !value && self.collision_scene.contains_owner(owner) {
+            return Err(RuntimeError::PhysicsUnsupported);
         }
         self.objects.set_active_self(owner, value)?;
         Ok(())

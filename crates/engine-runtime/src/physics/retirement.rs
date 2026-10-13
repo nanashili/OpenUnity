@@ -70,11 +70,18 @@ pub(super) fn prepare_release(
 
 impl Runtime {
     pub(crate) fn physics_retire_objects(&mut self, ids: &[ObjectId]) -> Result<(), RuntimeError> {
-        prepare_retirement(&mut self.objects, &mut self.physics, ids).map_err(map_retirement_error)
+        let collision_candidate = self.collision_scene.prepare_retirement(ids)?;
+        prepare_retirement(&mut self.objects, &mut self.physics, ids)
+            .map_err(map_retirement_error)?;
+        self.collision_scene = collision_candidate;
+        Ok(())
     }
 
     pub(crate) fn physics_release_objects(&mut self, ids: &[ObjectId]) -> Result<(), RuntimeError> {
-        prepare_release(&mut self.objects, &mut self.physics, ids).map_err(map_retirement_error)
+        let collision_candidate = self.collision_scene.prepare_retirement(ids)?;
+        prepare_release(&mut self.objects, &mut self.physics, ids).map_err(map_retirement_error)?;
+        self.collision_scene = collision_candidate;
+        Ok(())
     }
 }
 

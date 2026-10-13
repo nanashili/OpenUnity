@@ -5,6 +5,7 @@ mod api_lifetime;
 mod api_properties;
 mod attachment;
 mod attachment_registry;
+mod attachment_reservation;
 mod body_properties;
 mod catalog_api;
 mod manual_step;
