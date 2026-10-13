@@ -201,7 +201,11 @@ def require_controlled_path(path: Path) -> None:
 def snapshot_toolchain(output: Path) -> list[dict]:
     interop_root = ROOT / "managed" / "Engine.Interop"
     files = []
-    for name in ("OpenUnityNative.cs", "OpenUnityNative.PhysicsMotion.cs"):
+    for name in (
+        "OpenUnityNative.cs",
+        "OpenUnityNative.PhysicsMotion.cs",
+        "OpenUnityNative.SceneSnapshot.cs",
+    ):
         interop = interop_root / name
         require_controlled_path(interop)
         files.append(interop)
