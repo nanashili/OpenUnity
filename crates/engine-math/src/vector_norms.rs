@@ -37,7 +37,7 @@ pub fn normalize_vector(value: Vector) -> Result<Vector, MathError> {
     vector(components)
 }
 
-fn stable_length(value: Vector) -> Result<f64, MathError> {
+pub(crate) fn stable_length(value: Vector) -> Result<f64, MathError> {
     finite(&value)?;
 
     let scale = value
