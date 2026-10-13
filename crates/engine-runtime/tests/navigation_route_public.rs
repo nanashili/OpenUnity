@@ -83,6 +83,54 @@ fn route_advances_across_waypoints_and_matches_navigation_follower() {
 }
 
 #[test]
+fn route_advancement_preserves_external_rotation_and_scale_writes() {
+    let graph = graph(&[[0.0; 3], [1.0, 0.0, 0.0]], &[(0, 1, 1.0)]);
+    let mut runtime = Runtime::default();
+    let agent = runtime
+        .create_gameobject("pose-owned-navigation-agent")
+        .expect("create route agent");
+    let transform = runtime
+        .gameobject_transform(agent)
+        .expect("resolve route transform");
+    let mut route = runtime
+        .plan_navigation_route(agent, &graph, 0, 1)
+        .expect("plan route from the exact start position");
+
+    runtime
+        .transform_write(transform, 2, &[0.0, 0.0, 1.0, 0.0])
+        .expect("write an independent rotation");
+    runtime
+        .transform_write(transform, 3, &[2.0, 3.0, 4.0])
+        .expect("write an independent scale");
+    let rotation = runtime
+        .transform_read(transform, 2)
+        .expect("read the authored rotation");
+    assert_eq!(rotation, vec![0.0, 0.0, 1.0, 0.0]);
+    let scale = runtime
+        .transform_read(transform, 3)
+        .expect("read the authored scale");
+    assert_eq!(scale, vec![2.0, 3.0, 4.0]);
+
+    let result = runtime
+        .advance_navigation_route(&mut route, 0.5)
+        .expect("advance after non-position Transform writes");
+    let position_after = runtime
+        .transform_read(transform, 4)
+        .expect("read the route position");
+    let rotation_after = runtime
+        .transform_read(transform, 2)
+        .expect("read the preserved rotation");
+    let scale_after = runtime
+        .transform_read(transform, 3)
+        .expect("read the preserved scale");
+
+    assert_eq!(result.position, [0.5, 0.0, 0.0]);
+    assert_eq!(position_after, vec![0.5, 0.0, 0.0]);
+    assert_eq!(rotation_after, rotation);
+    assert_eq!(scale_after, scale);
+}
+
+#[test]
 fn start_position_and_any_external_edit_are_checked_exactly() {
     let graph = graph(&[[0.0; 3], [1.0, 0.0, 0.0]], &[(0, 1, 1.0)]);
     let mut runtime = Runtime::default();
