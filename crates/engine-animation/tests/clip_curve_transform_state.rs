@@ -54,6 +54,10 @@ fn clip_validation_keeps_order_and_rejects_invalid_data() {
         Err(ClipDataError::DuplicateTime { .. })
     ));
     assert!(matches!(
+        Channel::<f32>::try_new(Vec::new().into_boxed_slice()),
+        Err(ClipDataError::EmptyTrack)
+    ));
+    assert!(matches!(
         AnimationClip::<f32>::try_new(1.0, Vec::<Track<f32>>::new().into_boxed_slice()),
         Err(ClipDataError::EmptyTrack)
     ));
