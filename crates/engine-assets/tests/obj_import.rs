@@ -208,7 +208,9 @@ fn input_limit_accepts_exact_boundary_and_rejects_one_byte_over() {
     let oversized = padded_valid_obj(INPUT_LIMIT + 1);
     assert!(matches!(
         parse_obj_mesh(7, &oversized),
-        Err(ObjImportError::InputTooLarge)
+        Err(ObjImportError::InputTooLarge {
+            byte_offset: INPUT_LIMIT
+        })
     ));
 }
 

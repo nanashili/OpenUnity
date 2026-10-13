@@ -6,7 +6,9 @@ const MAX_OBJ_BYTES: usize = 16 * 1024 * 1024;
 /// Parses the deliberately bounded, triangle-only OBJ subset without I/O.
 pub fn parse_obj_mesh(id: u32, bytes: &[u8]) -> Result<MeshAsset, ObjImportError> {
     if bytes.len() > MAX_OBJ_BYTES {
-        return Err(ObjImportError::InputTooLarge);
+        return Err(ObjImportError::InputTooLarge {
+            byte_offset: MAX_OBJ_BYTES,
+        });
     }
     validate_text(bytes)?;
 

@@ -7,7 +7,10 @@ use std::fmt;
 #[derive(Debug)]
 pub enum ObjImportError {
     /// The input is larger than the importer byte limit.
-    InputTooLarge,
+    InputTooLarge {
+        /// Zero-based offset of the first byte beyond the importer byte limit.
+        byte_offset: usize,
+    },
     /// The first non-ASCII byte was found at the given zero-based offset.
     NonAscii {
         /// Zero-based offset of the first non-ASCII byte.
@@ -65,7 +68,10 @@ pub enum ObjImportError {
 impl fmt::Display for ObjImportError {
     fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Self::InputTooLarge => formatter.write_str("OBJ input exceeds the byte limit"),
+            Self::InputTooLarge { byte_offset } => write!(
+                formatter,
+                "OBJ input exceeds the byte limit at offset {byte_offset}"
+            ),
             Self::NonAscii { byte_offset } => {
                 write!(
                     formatter,
