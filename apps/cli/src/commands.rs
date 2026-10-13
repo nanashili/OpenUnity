@@ -15,11 +15,14 @@ use std::error::Error;
 pub fn run() -> Result<(), Box<dyn Error>> {
     let args: Vec<_> = std::env::args().skip(1).collect();
 
+    if args.is_empty()
+        || matches!(args.as_slice(), [argument] if matches!(argument.as_str(), "--help" | "-h"))
+    {
+        diagnostics::print_usage();
+        return Ok(());
+    }
+
     match args.as_slice() {
-        [] => {
-            diagnostics::print_usage();
-            Ok(())
-        }
         [arg] if arg == "--self-check" => diagnostics::self_check(),
         [flag, ..] if flag == "--export-wav" => audio_export::run(&args),
         [flag, ..] if flag == "--mix-wav" => audio_mix::run(&args),
