@@ -1113,6 +1113,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "engine-platform"
+version = "0.1.0"
+dependencies = [
+ "raw-window-handle",
+ "winit",
+]
+
+[[package]]
 name = "engine-render-api"
 version = "0.1.0"
 dependencies = [

@@ -11,6 +11,7 @@ members = [
     "crates/engine-audio",
     "crates/engine-render-api",
     "crates/engine-render-wgpu",
+    "crates/engine-platform",
     "crates/engine-animation",
     "crates/engine-physics-api",
     "crates/engine-physics-2d",
@@ -43,6 +44,7 @@ engine-navigation = { path = "crates/engine-navigation" }
 engine-audio = { path = "crates/engine-audio" }
 engine-render-api = { path = "crates/engine-render-api" }
 engine-render-wgpu = { path = "crates/engine-render-wgpu" }
+engine-platform = { path = "crates/engine-platform" }
 engine-animation = { path = "crates/engine-animation" }
 engine-physics-api = { path = "crates/engine-physics-api" }
 engine-physics-2d = { path = "crates/engine-physics-2d" }
@@ -54,6 +56,7 @@ engine-runtime-ffi = { path = "crates/engine-runtime/ffi" }
 serde = { version = "=1.0.228", features = ["derive"] }
 serde_json = { version = "=1.0.145", features = ["raw_value"] }
 yaml-rust2 = "=0.13.0"
+raw-window-handle = "=0.6.2"
 
 bytemuck = { version = "=1.25.2", features = ["derive"] }
 pollster = "=0.4.0"
@@ -61,6 +64,11 @@ sha2 = "=0.10.9"
 wgpu = { version = "=27.0.1", default-features = false }
 rapier2d = { version = "=0.26.1" }
 rapier3d = { version = "=0.26.1" }
+
+[workspace.dependencies.winit]
+version = "=0.30.13"
+default-features = false
+features = ["rwh_06", "x11", "wayland", "wayland-dlopen"]
 
 [workspace.lints.rust]
 unsafe_op_in_unsafe_fn = "deny"

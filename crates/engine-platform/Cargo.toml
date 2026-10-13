@@ -1,0 +1,13 @@
+[package]
+name = "engine-platform"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+
+[dependencies]
+raw-window-handle.workspace = true
+winit.workspace = true
+
+[lints]
+workspace = true
