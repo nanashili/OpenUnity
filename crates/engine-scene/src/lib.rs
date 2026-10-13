@@ -4,6 +4,7 @@
 
 mod importer;
 mod render_binding_owners;
+mod render_reference_extraction;
 mod yaml;
 
 pub use engine_serialization::{
@@ -12,6 +13,10 @@ pub use engine_serialization::{
 };
 pub use importer::import_project;
 pub use render_binding_owners::validate_render_binding_owners;
+pub use render_reference_extraction::{
+    MaterialField, MeshFilterReference, MeshRendererReference, PointerField, SceneRenderReferences,
+    SerializedAssetPointer, extract_scene_render_references,
+};
 
 use engine_serialization::{parse_json, validate_text as text};
 type Result<T> = std::result::Result<T, SceneError>;
