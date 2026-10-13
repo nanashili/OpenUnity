@@ -4,9 +4,11 @@ use engine_audio::wav::import_wav;
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::process::{Command, Output};
+use std::sync::atomic::{AtomicU64, Ordering};
 use std::time::{SystemTime, UNIX_EPOCH};
 
 const MAX_INPUT_BYTES: usize = 16 * 1024 * 1024;
+static NEXT_WORKSPACE: AtomicU64 = AtomicU64::new(0);
 
 struct Chunk {
     id: [u8; 4],
@@ -23,7 +25,11 @@ impl TestWorkspace {
             .duration_since(UNIX_EPOCH)
             .expect("system clock must be after the Unix epoch")
             .as_nanos();
-        let root = std::env::temp_dir().join(format!("openunity-wav-cli-{nonce}"));
+        let ordinal = NEXT_WORKSPACE.fetch_add(1, Ordering::Relaxed);
+        let root = std::env::temp_dir().join(format!(
+            "openunity-wav-cli-{}-{nonce}-{ordinal}",
+            std::process::id()
+        ));
         fs::create_dir(&root).expect("create unique test workspace");
         Self { root }
     }
