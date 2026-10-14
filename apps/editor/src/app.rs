@@ -123,6 +123,7 @@ pub struct EditorApp {
     policy: WritePolicy,
     workspace: Workspace,
     hierarchy_browser: HierarchyBrowser,
+    hierarchy_expansion: hierarchy::ExpansionState,
     inspector_scroll: serde_json::Value,
     inspector_scope: u64,
     inspector_controller: InspectorController,

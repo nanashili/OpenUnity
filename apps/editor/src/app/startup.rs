@@ -23,6 +23,7 @@ impl EditorApp {
             policy,
             workspace: Workspace::default(),
             hierarchy_browser: HierarchyBrowser::default(),
+            hierarchy_expansion: hierarchy::ExpansionState::default(),
             inspector_scroll: serde_json::Value::Null,
             inspector_scope: 1,
             inspector_controller: InspectorController::deferred(),

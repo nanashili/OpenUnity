@@ -33,10 +33,11 @@ impl EditorApp {
                             .imported_actions
                             .extend(imported::show_hierarchy(ui, document));
                     } else {
-                        pending.actions.extend(hierarchy::show(
+                        pending.actions.extend(hierarchy::show_with_expansion(
                             ui,
                             self.document.scene(),
                             self.document.selection(),
+                            &mut self.hierarchy_expansion,
                         ));
                     }
                 });

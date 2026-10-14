@@ -12,13 +12,23 @@ use crate::EditorAction;
 
 /// Display the live forest and return document operations for the shell to validate.
 pub fn show(ui: &mut Ui, scene: &Scene, selection: &Selection) -> Vec<EditorAction> {
+    show_with_expansion(ui, scene, selection, &mut super::ExpansionState::default())
+}
+
+/// Render the authored hierarchy using the app-owned branch visibility state.
+pub fn show_with_expansion(
+    ui: &mut Ui,
+    scene: &Scene,
+    selection: &Selection,
+    expansion: &mut super::ExpansionState,
+) -> Vec<EditorAction> {
     let mut actions = Vec::new();
     let primary = selection.primary().filter(|id| scene.get(*id).is_some());
     let selected: BTreeSet<_> = selection.ids().collect();
 
     creation_controls(ui, scene, primary, selection, &selected, &mut actions);
     parent_control(ui, scene, primary, &mut actions);
-    forest(ui, scene, &selected, &mut actions);
+    forest(ui, scene, &selected, expansion, &mut actions);
     actions
 }
 
@@ -109,8 +119,11 @@ fn forest(
     ui: &mut Ui,
     scene: &Scene,
     selected: &BTreeSet<EntityId>,
+    expansion: &mut super::ExpansionState,
     actions: &mut Vec<EditorAction>,
 ) {
+    expansion.reconcile(scene);
+
     let entities: BTreeMap<_, _> = scene.entities().map(|entity| (entity.id, entity)).collect();
     ScrollArea::both()
         .id_salt("hierarchy_forest")
@@ -135,16 +148,27 @@ fn forest(
                     continue;
                 };
                 let sibling_order = scene.sibling_group(entity.parent).unwrap_or_default();
-                row::render_entity_row(
+                let has_children = super::expansion::has_renderable_children(scene, id, depth);
+                let collapsed = expansion.is_collapsed(id);
+                let recursive_toggle = row::render_entity_row(
                     ui,
-                    entity,
-                    depth,
-                    sibling_position,
-                    sibling_order,
+                    row::EntityRow {
+                        entity,
+                        depth,
+                        sibling_position,
+                        sibling_order,
+                        has_children,
+                        collapsed,
+                    },
                     selected,
                     actions,
                 );
-                if depth + 1 < MAX_HIERARCHY_DEPTH
+                if let Some(recursive) = recursive_toggle {
+                    expansion.toggle(scene, id, recursive);
+                }
+                if has_children
+                    && !expansion.is_collapsed(id)
+                    && depth + 1 < MAX_HIERARCHY_DEPTH
                     && let Some(descendants) = scene.sibling_group(Some(entity.id))
                 {
                     let sibling_count = descendants.len();

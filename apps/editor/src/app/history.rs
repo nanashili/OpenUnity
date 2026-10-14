@@ -10,6 +10,9 @@ impl EditorApp {
             self.document.undo().map_err(|e| e.to_string())?
         };
         if changed {
+            if self.imported.is_none() {
+                self.hierarchy_expansion.reconcile(self.document.scene());
+            }
             if self.workspace.profile() == AppearanceProfile::Legacy {
                 self.imported_inspector = imported::InspectorPanel::default();
             }
@@ -27,6 +30,9 @@ impl EditorApp {
             self.document.redo().map_err(|e| e.to_string())?
         };
         if changed {
+            if self.imported.is_none() {
+                self.hierarchy_expansion.reconcile(self.document.scene());
+            }
             if self.workspace.profile() == AppearanceProfile::Legacy {
                 self.imported_inspector = imported::InspectorPanel::default();
             }

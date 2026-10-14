@@ -5,18 +5,33 @@ use openunity_editor_core::scene::{Entity, EntityId};
 
 use crate::EditorAction;
 
+pub(super) struct EntityRow<'a> {
+    pub entity: &'a Entity,
+    pub depth: usize,
+    pub sibling_position: Option<(usize, usize)>,
+    pub sibling_order: &'a [EntityId],
+    pub has_children: bool,
+    pub collapsed: bool,
+}
+
 pub(super) fn render_entity_row(
     ui: &mut Ui,
-    entity: &Entity,
-    depth: usize,
-    sibling_position: Option<(usize, usize)>,
-    sibling_order: &[EntityId],
+    row: EntityRow<'_>,
     selected: &BTreeSet<EntityId>,
     actions: &mut Vec<EditorAction>,
-) {
+) -> Option<bool> {
+    let EntityRow {
+        entity,
+        depth,
+        sibling_position,
+        sibling_order,
+        has_children,
+        collapsed,
+    } = row;
     let row_response = ui.push_id(entity.id.0, |ui| {
         ui.horizontal(|ui| {
             ui.add_space(depth as f32 * 14.0);
+            let disclosure_toggle = disclosure_control(ui, has_children, collapsed);
             let label = format!(
                 "{} ({})",
                 entity.name,
@@ -39,10 +54,13 @@ pub(super) fn render_entity_row(
             if depth > 0 {
                 sibling_controls(ui, entity.id, sibling_position, actions);
             }
-            response
+            (response, disclosure_toggle)
         })
     });
-    let response = row_response.inner.inner;
+    let (response, disclosure_toggle) = row_response.inner.inner;
+    if disclosure_toggle.is_some() {
+        return disclosure_toggle;
+    }
 
     let drop = super::super::super::sibling_drag::observe_sibling_row(
         &response,
@@ -64,10 +82,10 @@ pub(super) fn render_entity_row(
                 });
             }
         }
-        return;
+        return None;
     }
     if drop.completed {
-        return;
+        return None;
     }
 
     if response.clicked() {
@@ -77,6 +95,27 @@ pub(super) fn render_entity_row(
             toggle,
         });
     }
+
+    None
+}
+
+fn disclosure_control(ui: &mut Ui, has_children: bool, collapsed: bool) -> Option<bool> {
+    if !has_children {
+        ui.add_space(18.0);
+        return None;
+    }
+
+    let glyph = if collapsed { "▸" } else { "▾" };
+    let hover_text = if collapsed {
+        "Expand branch"
+    } else {
+        "Collapse branch"
+    };
+    let response = ui.small_button(glyph).on_hover_text(hover_text);
+
+    response
+        .clicked()
+        .then(|| ui.input(|input| input.modifiers.alt))
 }
 
 fn sibling_controls(
