@@ -5,7 +5,7 @@ use std::collections::BTreeSet;
 use engine_scene::ScenePlan;
 use serde::{Deserialize, Serialize};
 
-use crate::scene::EntityId;
+use crate::{hierarchy::HierarchyRevision, scene::EntityId};
 
 use super::{ImportedError, ImportedSource, Result};
 use validation::validate_plan;
@@ -38,6 +38,9 @@ pub struct ImportedSnapshot {
     // It is derived only after validation, never supplied by an archive.
     #[serde(skip)]
     plan_identity: Vec<u8>,
+    // Process-local row-content identity; it is not part of the archive or semantic equality.
+    #[serde(skip)]
+    hierarchy_revision: HierarchyRevision,
 }
 impl PartialEq for ImportedSnapshot {
     fn eq(&self, other: &Self) -> bool {
@@ -62,6 +65,7 @@ impl ImportedSnapshot {
             editor_ids,
             plan,
             plan_identity: Vec::new(),
+            hierarchy_revision: HierarchyRevision::fresh(),
         };
         snapshot.refresh()?;
         Ok(snapshot)
@@ -111,7 +115,7 @@ impl ImportedSnapshot {
     }
     fn refresh(&mut self) -> Result<()> {
         self.validate()?;
-        self.plan_identity = serde_json::to_vec(&self.plan)
+        let plan_identity = serde_json::to_vec(&self.plan)
             .map_err(|e| ImportedError::new("validate archive", e))?;
         let bytes =
             serde_json::to_vec(self).map_err(|e| ImportedError::new("validate archive", e))?;
@@ -121,6 +125,9 @@ impl ImportedSnapshot {
                 "archive exceeds 16 MiB",
             ));
         }
+
+        self.plan_identity = plan_identity;
+        self.hierarchy_revision = HierarchyRevision::fresh();
         Ok(())
     }
 }

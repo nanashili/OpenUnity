@@ -5,7 +5,7 @@ use std::path::{Path, PathBuf};
 
 use engine_scene::ScenePlan;
 
-use crate::{history::History, scene::EntityId};
+use crate::{hierarchy::HierarchyRevision, history::History, scene::EntityId};
 
 use super::super::{ImportedError, ImportedSource, Result};
 use super::{ImportedEditorId, ImportedSnapshot};
@@ -80,6 +80,10 @@ impl ImportedDocument {
     /// Complete authoritative immutable archive state.
     pub fn snapshot(&self) -> &ImportedSnapshot {
         &self.snapshot
+    }
+    /// Opaque identity for the current imported hierarchy row content.
+    pub fn hierarchy_revision(&self) -> HierarchyRevision {
+        self.snapshot.hierarchy_revision.clone()
     }
     /// Exact retained scene plan; never an authoring projection.
     pub fn plan(&self) -> &ScenePlan {

@@ -8,6 +8,8 @@ use crate::history::History;
 use crate::scene::{EntityId, Scene, SceneError};
 use crate::selection::Selection;
 
+pub use crate::hierarchy_revision::HierarchyRevision;
+
 /// Return root identities in ascending order.
 pub fn roots(scene: &Scene) -> Vec<EntityId> {
     scene

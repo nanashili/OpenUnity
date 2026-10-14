@@ -2,6 +2,8 @@
 
 use std::collections::BTreeMap;
 
+use crate::hierarchy_revision::HierarchyRevision;
+
 use super::{Entity, EntityId, MAX_ENTITIES, MAX_NAME_BYTES, SceneError};
 
 mod edits;
@@ -15,11 +17,18 @@ mod tests;
 /// Generic history must call [`Self::preserve_high_water`] with the live
 /// document's [`Self::next_id`] before committing a restored snapshot. The
 /// serialized document wrapper belongs to scene persistence, not this model.
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug)]
 pub struct Scene {
     name: String,
     entities: BTreeMap<EntityId, Entity>,
     next_id: u64,
+    hierarchy_revision: HierarchyRevision,
+}
+
+impl PartialEq for Scene {
+    fn eq(&self, other: &Self) -> bool {
+        self.name == other.name && self.entities == other.entities && self.next_id == other.next_id
+    }
 }
 
 impl Scene {
@@ -31,6 +40,7 @@ impl Scene {
             name,
             entities: BTreeMap::new(),
             next_id: 1,
+            hierarchy_revision: HierarchyRevision::fresh(),
         })
     }
 
@@ -49,6 +59,7 @@ impl Scene {
             name: name.into(),
             next_id,
             entities: BTreeMap::new(),
+            hierarchy_revision: HierarchyRevision::fresh(),
         };
         for entity in entities {
             let id = entity.id;
@@ -73,7 +84,13 @@ impl Scene {
         let name = name.into();
         validate_name(&name, "rename scene")?;
         self.name = name;
+        self.hierarchy_revision = HierarchyRevision::fresh();
         Ok(())
+    }
+
+    /// Return an owned opaque identity for the current hierarchy content.
+    pub fn hierarchy_revision(&self) -> HierarchyRevision {
+        self.hierarchy_revision.clone()
     }
 
     /// Entities in ascending identity order.

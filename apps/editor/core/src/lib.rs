@@ -12,6 +12,7 @@ pub mod selection;
 pub mod capabilities;
 pub mod document;
 pub mod hierarchy;
+mod hierarchy_revision;
 pub mod inspector;
 pub mod preferences;
 pub mod scene_io;

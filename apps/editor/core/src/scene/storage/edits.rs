@@ -2,6 +2,8 @@
 
 use std::collections::BTreeMap;
 
+use crate::hierarchy_revision::HierarchyRevision;
+
 use super::super::{
     Entity, EntityId, MAX_ENTITIES, MAX_HIERARCHY_DEPTH, Primitive, SceneError, Transform,
 };
@@ -34,6 +36,7 @@ impl Scene {
             ));
         }
         candidate.validate_for(operation)?;
+        candidate.hierarchy_revision = HierarchyRevision::fresh();
         *self = candidate;
         Ok(())
     }
@@ -82,6 +85,7 @@ impl Scene {
             },
         );
         self.next_id = next_id;
+        self.hierarchy_revision = HierarchyRevision::fresh();
         Ok(id)
     }
 
@@ -112,6 +116,7 @@ impl Scene {
         for id in &removed {
             self.entities.remove(id);
         }
+        self.hierarchy_revision = HierarchyRevision::fresh();
         Ok(removed)
     }
 }
