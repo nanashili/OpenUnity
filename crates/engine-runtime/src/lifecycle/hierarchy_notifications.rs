@@ -6,7 +6,7 @@ use engine_object::ObjectId;
 pub(crate) const CHILDREN_CHANGED: i32 = 9;
 pub(crate) const PARENT_CHANGED: i32 = 10;
 
-type Notification = (ObjectId, i32);
+pub(crate) type Notification = (ObjectId, i32);
 
 impl Runtime {
     pub(crate) fn prepare_reparent_notifications(
@@ -44,6 +44,20 @@ impl Runtime {
     ) -> Result<Vec<Notification>, RuntimeError> {
         let mut notifications = Vec::new();
         self.append_transform_notifications(parent, CHILDREN_CHANGED, &mut notifications)?;
+        self.reserve_hierarchy_notifications(notifications.len())?;
+        Ok(notifications)
+    }
+
+    pub(crate) fn prepare_destroyed_child_notifications(
+        &mut self,
+        parents: &[ObjectId],
+    ) -> Result<Vec<Notification>, RuntimeError> {
+        let mut notifications = Vec::new();
+
+        for &parent in parents {
+            self.append_transform_notifications(parent, CHILDREN_CHANGED, &mut notifications)?;
+        }
+
         self.reserve_hierarchy_notifications(notifications.len())?;
         Ok(notifications)
     }

@@ -1,5 +1,6 @@
 //! Validated destruction planning and idempotent ownership removal.
 
+use super::hierarchy_notifications::Notification;
 use crate::{ObjectKind, Runtime, RuntimeError};
 use engine_object::ObjectId;
 use std::collections::HashSet;
@@ -11,6 +12,7 @@ struct DestructionPlan {
     targets: Vec<PlannedDestruction>,
     retirement_ids: Vec<ObjectId>,
     hierarchy: Option<engine_scene::PreparedHierarchyChange>,
+    hierarchy_notifications: Vec<Notification>,
 }
 
 #[derive(Debug)]
@@ -70,7 +72,7 @@ impl Runtime {
         Ok(PlannedDestruction::Subtree { nodes })
     }
 
-    fn plan_destruction(&self) -> Result<DestructionPlan, RuntimeError> {
+    fn plan_destruction(&mut self) -> Result<DestructionPlan, RuntimeError> {
         let mut targets = Vec::new();
         let mut retirement_ids = Vec::new();
         let mut transforms = HashSet::new();
@@ -101,6 +103,8 @@ impl Runtime {
             }
             targets.push(planned);
         }
+        let parents = self.surviving_destruction_parents(&targets, &transforms)?;
+        let hierarchy_notifications = self.prepare_destroyed_child_notifications(&parents)?;
         let transforms: Vec<_> = transforms.into_iter().collect();
         let hierarchy = if transforms.is_empty() {
             None
@@ -116,7 +120,41 @@ impl Runtime {
             targets,
             retirement_ids,
             hierarchy,
+            hierarchy_notifications,
         })
+    }
+
+    fn surviving_destruction_parents(
+        &self,
+        targets: &[PlannedDestruction],
+        removed_transforms: &HashSet<ObjectId>,
+    ) -> Result<Vec<ObjectId>, RuntimeError> {
+        let mut parents = Vec::new();
+        let mut seen = HashSet::new();
+        parents
+            .try_reserve(targets.len())
+            .map_err(|_| RuntimeError::CountOverflow)?;
+        seen.try_reserve(targets.len())
+            .map_err(|_| RuntimeError::CountOverflow)?;
+
+        for target in targets {
+            let PlannedDestruction::Subtree { nodes } = target else {
+                continue;
+            };
+            let Some(root) = nodes.first() else {
+                continue;
+            };
+            let Some(parent) = self.transform_parent_id(root.transform)? else {
+                continue;
+            };
+
+            if removed_transforms.contains(&parent) || !seen.insert(parent) {
+                continue;
+            }
+            parents.push(parent);
+        }
+
+        Ok(parents)
     }
 
     fn commit_subtree_destruction(&mut self, nodes: Vec<DestructionNode>) {
@@ -157,6 +195,7 @@ impl Runtime {
             targets,
             retirement_ids,
             hierarchy,
+            hierarchy_notifications,
         } = plan;
         self.physics_retire_objects(&retirement_ids)?;
         if let Some(hierarchy) = hierarchy {
@@ -165,6 +204,7 @@ impl Runtime {
                 .expect("prepared hierarchy removal remains current during exclusive retirement");
         }
         self.commit_destruction(targets);
+        self.commit_hierarchy_notifications(hierarchy_notifications);
         Ok(())
     }
 }
