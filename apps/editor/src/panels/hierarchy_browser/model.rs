@@ -9,6 +9,7 @@ pub(crate) struct Row {
     pub depth: usize,
     pub active: bool,
     pub sibling_position: Option<(usize, usize)>,
+    pub root_position: Option<(usize, usize)>,
 }
 
 pub(crate) enum BrowserAction {
@@ -24,11 +25,13 @@ pub(super) struct CachedRow {
     pub(super) active: bool,
     pub(super) has_children: bool,
     pub(super) sibling_position: Option<(usize, usize)>,
+    pub(super) root_position: Option<(usize, usize)>,
 }
 
 pub(super) struct CachedForest {
     pub(super) revision: HierarchyRevision,
     pub(super) rows: Vec<CachedRow>,
+    pub(super) root_order: Vec<EntityId>,
     pub(super) parent_indices: Vec<Option<usize>>,
     pub(super) branches: HashSet<EntityId>,
 }
@@ -43,11 +46,17 @@ impl CachedForest {
     pub(super) fn from_rows(revision: HierarchyRevision, rows: Vec<Row>) -> Result<Self, String> {
         let index_by_id = index_rows_by_id(&rows)?;
         let topology = PreorderTopology::validate(&rows, &index_by_id)?;
+        let root_order = rows
+            .iter()
+            .filter(|row| row.root_position.is_some())
+            .map(|row| row.id)
+            .collect();
         let cached_rows = cache_rows(rows, &topology.has_children);
 
         Ok(Self {
             revision,
             rows: cached_rows,
+            root_order,
             parent_indices: topology.parent_indices,
             branches: topology.branches,
         })
@@ -158,6 +167,7 @@ fn cache_rows(rows: Vec<Row>, has_children: &[bool]) -> Vec<CachedRow> {
             active: row.active,
             has_children: has_children[index],
             sibling_position: row.sibling_position,
+            root_position: row.root_position,
         })
         .collect()
 }

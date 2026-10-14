@@ -92,7 +92,7 @@ impl Scene {
         Ok(())
     }
 
-    /// Move a child entity within its existing direct-child group.
+    /// Move an entity within its existing root or direct-child group.
     pub fn set_sibling_index(
         &mut self,
         id: EntityId,
@@ -103,18 +103,13 @@ impl Scene {
             .entities
             .get(&id)
             .ok_or_else(|| SceneError::new(operation, format!("entity {} does not exist", id.0)))?;
-        let Some(parent) = entity.parent else {
-            return Err(SceneError::new(
-                operation,
-                "root sibling ordering is unsupported for authored editor actions",
-            ));
-        };
+        let parent = entity.parent;
         let current_index = self.sibling_index(id).ok_or_else(|| {
             SceneError::new(operation, "entity is missing from its sibling group")
         })?;
         let group_length = self
             .sibling_groups
-            .get(&Some(parent))
+            .get(&parent)
             .map(Vec::len)
             .ok_or_else(|| SceneError::new(operation, "sibling group is missing"))?;
 
@@ -127,7 +122,7 @@ impl Scene {
 
         let group = self
             .sibling_groups
-            .get_mut(&Some(parent))
+            .get_mut(&parent)
             .expect("sibling group was validated above");
         let moved = group.remove(current_index);
         group.insert(sibling_index, moved);

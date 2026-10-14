@@ -106,32 +106,30 @@ fn forest(
                 ui.label("Scene is empty. Add an entity to begin.");
             }
             let mut pending = Vec::new();
-            if let Some(roots) = scene.sibling_group(None) {
-                pending.extend(roots.iter().rev().map(|id| (*id, 0, None)));
+            let roots = scene.sibling_group(None).unwrap_or(&[]);
+            if !roots.is_empty() {
+                let root_count = roots.len();
+                pending.extend(
+                    roots
+                        .iter()
+                        .enumerate()
+                        .rev()
+                        .map(|(index, id)| (*id, 0, Some((index, root_count)))),
+                );
             }
             while let Some((id, depth, sibling_position)) = pending.pop() {
                 let Some(entity) = entities.get(&id).copied() else {
                     continue;
                 };
-                ui.push_id(entity.id.0, |ui| {
-                    ui.horizontal(|ui| {
-                        ui.add_space(depth as f32 * 14.0);
-                        let active = if entity.active { "active" } else { "inactive" };
-                        let response = ui.selectable_label(
-                            selected.contains(&entity.id),
-                            format!("{} ({active})", entity.name),
-                        );
-                        if response.clicked() {
-                            let toggle =
-                                ui.input(|input| input.modifiers.command || input.modifiers.ctrl);
-                            actions.push(EditorAction::Select {
-                                id: entity.id,
-                                toggle,
-                            });
-                        }
-                        sibling_controls(ui, entity.id, sibling_position, actions);
-                    });
-                });
+                render_entity_row(
+                    ui,
+                    entity,
+                    depth,
+                    sibling_position,
+                    roots,
+                    selected,
+                    actions,
+                );
                 if depth + 1 < MAX_HIERARCHY_DEPTH
                     && let Some(descendants) = scene.sibling_group(Some(entity.id))
                 {
@@ -144,6 +142,70 @@ fn forest(
                 }
             }
         });
+}
+
+fn render_entity_row(
+    ui: &mut Ui,
+    entity: &openunity_editor_core::scene::Entity,
+    depth: usize,
+    sibling_position: Option<(usize, usize)>,
+    root_order: &[EntityId],
+    selected: &BTreeSet<EntityId>,
+    actions: &mut Vec<EditorAction>,
+) {
+    let row_response = ui.push_id(entity.id.0, |ui| {
+        ui.horizontal(|ui| {
+            ui.add_space(depth as f32 * 14.0);
+            let label = format!(
+                "{} ({})",
+                entity.name,
+                if entity.active { "active" } else { "inactive" }
+            );
+            let response = if depth == 0 {
+                ui.add(
+                    eframe::egui::Button::selectable(selected.contains(&entity.id), label)
+                        .sense(eframe::egui::Sense::click_and_drag())
+                        .min_size(eframe::egui::vec2(ui.available_width(), 18.0))
+                        .frame(false),
+                )
+            } else {
+                ui.selectable_label(selected.contains(&entity.id), label)
+            };
+            if depth > 0 {
+                sibling_controls(ui, entity.id, sibling_position, actions);
+            }
+            response
+        })
+    });
+    let response = row_response.inner.inner;
+
+    if depth == 0 {
+        let drop = super::super::root_drag::observe_root_row(
+            &response,
+            entity.id,
+            sibling_position,
+            root_order,
+            true,
+        );
+        if let Some((dragged_id, sibling_index)) = drop.operation {
+            actions.push(EditorAction::SetSiblingIndex {
+                id: dragged_id,
+                sibling_index,
+            });
+            return;
+        }
+        if drop.completed {
+            return;
+        }
+    }
+
+    if response.clicked() {
+        let toggle = ui.input(|input| input.modifiers.command || input.modifiers.ctrl);
+        actions.push(EditorAction::Select {
+            id: entity.id,
+            toggle,
+        });
+    }
 }
 
 fn sibling_controls(

@@ -94,6 +94,7 @@ impl HierarchyBrowser {
         self.geometry_truncated = false;
 
         let source_rows = &source.rows;
+        let root_order = &source.root_order;
         let selected_ids = &self.selected_ids;
         let collapsed_rows = &self.collapsed_rows;
         let query_active = !self.lowercase_query.is_empty();
@@ -122,6 +123,10 @@ impl HierarchyBrowser {
                                 selected,
                                 has_children,
                                 expanded,
+                                row_render::RootDragContext {
+                                    enabled: !query_active,
+                                    order: root_order,
+                                },
                             )
                         })
                         .inner;

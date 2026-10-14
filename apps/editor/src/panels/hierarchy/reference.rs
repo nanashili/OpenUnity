@@ -101,7 +101,14 @@ fn forest_rows(scene: &Scene) -> Result<Vec<Row>, String> {
     let entities: BTreeMap<_, _> = scene.entities().map(|entity| (entity.id, entity)).collect();
     let mut pending = Vec::new();
     if let Some(roots) = scene.sibling_group(None) {
-        pending.extend(roots.iter().rev().map(|id| (*id, 0, None)));
+        let root_count = roots.len();
+        pending.extend(
+            roots
+                .iter()
+                .enumerate()
+                .rev()
+                .map(|(index, id)| (*id, 0, Some((index, root_count)))),
+        );
     }
     let mut rows = Vec::new();
     while let Some((id, depth, sibling_position)) = pending.pop() {
@@ -115,7 +122,8 @@ fn forest_rows(scene: &Scene) -> Result<Vec<Row>, String> {
             name: entity.name.clone(),
             depth,
             active: entity.active,
-            sibling_position,
+            sibling_position: (depth > 0).then_some(sibling_position).flatten(),
+            root_position: (depth == 0).then_some(sibling_position).flatten(),
         });
 
         if let Some(descendants) = scene
