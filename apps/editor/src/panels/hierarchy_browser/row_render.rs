@@ -19,6 +19,7 @@ pub(super) struct RowRender {
 
 pub(super) struct SiblingDragContext<'a> {
     pub(super) enabled: bool,
+    pub(super) structural_edits_enabled: bool,
     pub(super) order: &'a [openunity_editor_core::scene::EntityId],
 }
 
@@ -34,7 +35,10 @@ pub(super) fn render_row(
     let layout = allocate_row(ui, row, selected, has_children, sibling_drag.enabled);
     let branch_toggle = show_disclosure(ui, row_index, &layout, expanded);
     let content = paint_row_content(ui, row, &layout);
-    let sibling_action = sibling_controls::render(ui, row, layout.rect);
+    let sibling_action = sibling_drag
+        .structural_edits_enabled
+        .then(|| sibling_controls::render(ui, row, layout.rect))
+        .flatten();
     let geometry = package_row_geometry(row_index, &layout.response, &layout, content);
     let response = attach_row_tooltip(layout.response, row);
     let sibling_drop = super::super::sibling_drag::observe_sibling_row(
@@ -46,7 +50,14 @@ pub(super) fn render_row(
     );
     let action = sibling_drop
         .operation
-        .map(|(dragged_id, index)| BrowserAction::SetSiblingIndex(dragged_id, index))
+        .map(|operation| match operation {
+            super::super::sibling_drag::SiblingDropOperation::Reorder { id, sibling_index } => {
+                BrowserAction::SetSiblingIndex(id, sibling_index)
+            }
+            super::super::sibling_drag::SiblingDropOperation::Reparent { id, parent } => {
+                BrowserAction::Reparent(id, parent)
+            }
+        })
         .or(sibling_action)
         .or_else(|| {
             (!sibling_drop.completed)

@@ -35,6 +35,7 @@ pub fn show_hierarchy_reference(
             ui,
             &document.plan().scene_name,
             document.selection().iter().copied(),
+            false,
         )
         .into_iter()
         .filter_map(|action| match action {
@@ -43,6 +44,7 @@ pub fn show_hierarchy_reference(
                 toggle,
             }),
             BrowserAction::SetSiblingIndex(_, _) => None,
+            BrowserAction::Reparent(_, _) => None,
         })
         .collect()
 }

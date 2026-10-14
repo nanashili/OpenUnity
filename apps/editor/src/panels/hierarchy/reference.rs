@@ -30,10 +30,14 @@ pub fn show_reference(
 
     actions.extend(
         browser
-            .tree(ui, scene.name(), selection.ids())
+            .tree(ui, scene.name(), selection.ids(), true)
             .into_iter()
             .map(|action| match action {
                 BrowserAction::Select(id, toggle) => EditorAction::Select { id, toggle },
+                BrowserAction::Reparent(id, parent) => EditorAction::Reparent {
+                    id,
+                    parent: Some(parent),
+                },
                 BrowserAction::SetSiblingIndex(id, sibling_index) => {
                     EditorAction::SetSiblingIndex { id, sibling_index }
                 }

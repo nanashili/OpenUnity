@@ -14,6 +14,7 @@ pub(crate) struct Row {
 
 pub(crate) enum BrowserAction {
     Select(EntityId, bool),
+    Reparent(EntityId, EntityId),
     SetSiblingIndex(EntityId, usize),
 }
 

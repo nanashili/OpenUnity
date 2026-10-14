@@ -11,6 +11,7 @@ impl HierarchyBrowser {
         ui: &mut Ui,
         scene_name: &str,
         selected: impl IntoIterator<Item = EntityId>,
+        structural_edits_enabled: bool,
     ) -> Vec<BrowserAction> {
         self.update_selected_ids(selected);
 
@@ -34,7 +35,13 @@ impl HierarchyBrowser {
 
         let mut actions = Vec::new();
         let mut branch_toggles = Vec::new();
-        self.render_viewport_rows(ui, row_height, &mut actions, &mut branch_toggles);
+        self.render_viewport_rows(
+            ui,
+            row_height,
+            structural_edits_enabled,
+            &mut actions,
+            &mut branch_toggles,
+        );
 
         for row_index in branch_toggles {
             self.toggle_branch_expansion(row_index);
@@ -79,6 +86,7 @@ impl HierarchyBrowser {
         &mut self,
         ui: &mut Ui,
         row_height: f32,
+        structural_edits_enabled: bool,
         actions: &mut Vec<BrowserAction>,
         branch_toggles: &mut Vec<usize>,
     ) {
@@ -128,7 +136,8 @@ impl HierarchyBrowser {
                                 has_children,
                                 expanded,
                                 row_render::SiblingDragContext {
-                                    enabled: !query_active,
+                                    enabled: structural_edits_enabled && !query_active,
+                                    structural_edits_enabled,
                                     order: sibling_order,
                                 },
                             )
