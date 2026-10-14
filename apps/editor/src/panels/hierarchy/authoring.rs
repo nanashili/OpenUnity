@@ -121,12 +121,13 @@ fn forest(
                 let Some(entity) = entities.get(&id).copied() else {
                     continue;
                 };
+                let sibling_order = scene.sibling_group(entity.parent).unwrap_or_default();
                 render_entity_row(
                     ui,
                     entity,
                     depth,
                     sibling_position,
-                    roots,
+                    sibling_order,
                     selected,
                     actions,
                 );
@@ -149,7 +150,7 @@ fn render_entity_row(
     entity: &openunity_editor_core::scene::Entity,
     depth: usize,
     sibling_position: Option<(usize, usize)>,
-    root_order: &[EntityId],
+    sibling_order: &[EntityId],
     selected: &BTreeSet<EntityId>,
     actions: &mut Vec<EditorAction>,
 ) {
@@ -161,16 +162,20 @@ fn render_entity_row(
                 entity.name,
                 if entity.active { "active" } else { "inactive" }
             );
-            let response = if depth == 0 {
-                ui.add(
-                    eframe::egui::Button::selectable(selected.contains(&entity.id), label)
-                        .sense(eframe::egui::Sense::click_and_drag())
-                        .min_size(eframe::egui::vec2(ui.available_width(), 18.0))
-                        .frame(false),
-                )
+            let controls_width = if depth > 0
+                && sibling_position.is_some_and(|(_, sibling_count)| sibling_count > 1)
+            {
+                44.0
             } else {
-                ui.selectable_label(selected.contains(&entity.id), label)
+                0.0
             };
+            let row_width = (ui.available_width() - controls_width).max(0.0);
+            let response = ui.add(
+                eframe::egui::Button::selectable(selected.contains(&entity.id), label)
+                    .sense(eframe::egui::Sense::click_and_drag())
+                    .min_size(eframe::egui::vec2(row_width, 18.0))
+                    .frame(false),
+            );
             if depth > 0 {
                 sibling_controls(ui, entity.id, sibling_position, actions);
             }
@@ -179,24 +184,22 @@ fn render_entity_row(
     });
     let response = row_response.inner.inner;
 
-    if depth == 0 {
-        let drop = super::super::root_drag::observe_root_row(
-            &response,
-            entity.id,
-            sibling_position,
-            root_order,
-            true,
-        );
-        if let Some((dragged_id, sibling_index)) = drop.operation {
-            actions.push(EditorAction::SetSiblingIndex {
-                id: dragged_id,
-                sibling_index,
-            });
-            return;
-        }
-        if drop.completed {
-            return;
-        }
+    let drop = super::super::sibling_drag::observe_sibling_row(
+        &response,
+        entity.id,
+        sibling_position,
+        sibling_order,
+        true,
+    );
+    if let Some((dragged_id, sibling_index)) = drop.operation {
+        actions.push(EditorAction::SetSiblingIndex {
+            id: dragged_id,
+            sibling_index,
+        });
+        return;
+    }
+    if drop.completed {
+        return;
     }
 
     if response.clicked() {

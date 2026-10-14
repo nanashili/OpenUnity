@@ -17,7 +17,7 @@ pub(super) struct RowRender {
     pub(super) branch_toggle: Option<usize>,
 }
 
-pub(super) struct RootDragContext<'a> {
+pub(super) struct SiblingDragContext<'a> {
     pub(super) enabled: bool,
     pub(super) order: &'a [openunity_editor_core::scene::EntityId],
 }
@@ -29,27 +29,27 @@ pub(super) fn render_row(
     selected: bool,
     has_children: bool,
     expanded: bool,
-    root_drag: RootDragContext<'_>,
+    sibling_drag: SiblingDragContext<'_>,
 ) -> RowRender {
-    let layout = allocate_row(ui, row, selected, has_children, root_drag.enabled);
+    let layout = allocate_row(ui, row, selected, has_children, sibling_drag.enabled);
     let branch_toggle = show_disclosure(ui, row_index, &layout, expanded);
     let content = paint_row_content(ui, row, &layout);
     let sibling_action = sibling_controls::render(ui, row, layout.rect);
     let geometry = package_row_geometry(row_index, &layout.response, &layout, content);
     let response = attach_row_tooltip(layout.response, row);
-    let root_drop = super::super::root_drag::observe_root_row(
+    let sibling_drop = super::super::sibling_drag::observe_sibling_row(
         &response,
         row.id,
-        row.root_position,
-        root_drag.order,
-        root_drag.enabled,
+        row.root_position.or(row.sibling_position),
+        sibling_drag.order,
+        sibling_drag.enabled,
     );
-    let action = root_drop
+    let action = sibling_drop
         .operation
         .map(|(dragged_id, index)| BrowserAction::SetSiblingIndex(dragged_id, index))
         .or(sibling_action)
         .or_else(|| {
-            (!root_drop.completed)
+            (!sibling_drop.completed)
                 .then(|| row_action(&response, row, branch_toggle.is_some()))
                 .flatten()
         });

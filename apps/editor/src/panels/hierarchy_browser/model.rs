@@ -19,6 +19,7 @@ pub(crate) enum BrowserAction {
 
 pub(super) struct CachedRow {
     pub(super) id: EntityId,
+    pub(super) parent: Option<EntityId>,
     pub(super) name: String,
     pub(super) lowercase_name: String,
     pub(super) depth: usize,
@@ -31,7 +32,7 @@ pub(super) struct CachedRow {
 pub(super) struct CachedForest {
     pub(super) revision: HierarchyRevision,
     pub(super) rows: Vec<CachedRow>,
-    pub(super) root_order: Vec<EntityId>,
+    pub(super) sibling_groups: BTreeMap<Option<EntityId>, Vec<EntityId>>,
     pub(super) parent_indices: Vec<Option<usize>>,
     pub(super) branches: HashSet<EntityId>,
 }
@@ -46,17 +47,19 @@ impl CachedForest {
     pub(super) fn from_rows(revision: HierarchyRevision, rows: Vec<Row>) -> Result<Self, String> {
         let index_by_id = index_rows_by_id(&rows)?;
         let topology = PreorderTopology::validate(&rows, &index_by_id)?;
-        let root_order = rows
-            .iter()
-            .filter(|row| row.root_position.is_some())
-            .map(|row| row.id)
-            .collect();
+        let mut sibling_groups = BTreeMap::new();
+        for row in &rows {
+            sibling_groups
+                .entry(row.parent)
+                .or_insert_with(Vec::new)
+                .push(row.id);
+        }
         let cached_rows = cache_rows(rows, &topology.has_children);
 
         Ok(Self {
             revision,
             rows: cached_rows,
-            root_order,
+            sibling_groups,
             parent_indices: topology.parent_indices,
             branches: topology.branches,
         })
@@ -162,6 +165,7 @@ fn cache_rows(rows: Vec<Row>, has_children: &[bool]) -> Vec<CachedRow> {
         .map(|(index, row)| CachedRow {
             lowercase_name: row.name.to_lowercase(),
             id: row.id,
+            parent: row.parent,
             name: row.name,
             depth: row.depth,
             active: row.active,

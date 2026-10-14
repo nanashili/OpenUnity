@@ -94,7 +94,7 @@ impl HierarchyBrowser {
         self.geometry_truncated = false;
 
         let source_rows = &source.rows;
-        let root_order = &source.root_order;
+        let sibling_groups = &source.sibling_groups;
         let selected_ids = &self.selected_ids;
         let collapsed_rows = &self.collapsed_rows;
         let query_active = !self.lowercase_query.is_empty();
@@ -113,6 +113,10 @@ impl HierarchyBrowser {
                     let has_children = row.has_children;
                     let collapsed = collapsed_rows.get(row_index).copied().unwrap_or(false);
                     let expanded = query_active || !collapsed;
+                    let sibling_order = sibling_groups
+                        .get(&row.parent)
+                        .map(Vec::as_slice)
+                        .unwrap_or_default();
 
                     let rendered = ui
                         .push_id(row.id.0, |ui| {
@@ -123,9 +127,9 @@ impl HierarchyBrowser {
                                 selected,
                                 has_children,
                                 expanded,
-                                row_render::RootDragContext {
+                                row_render::SiblingDragContext {
                                     enabled: !query_active,
-                                    order: root_order,
+                                    order: sibling_order,
                                 },
                             )
                         })

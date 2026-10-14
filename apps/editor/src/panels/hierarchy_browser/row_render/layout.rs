@@ -24,7 +24,7 @@ pub(super) fn allocate_row(
     row: &CachedRow,
     selected: bool,
     has_children: bool,
-    root_drag_enabled: bool,
+    sibling_drag_enabled: bool,
 ) -> RowLayout {
     let row_height = appearance::TREE_LINE_HEIGHT_FALLBACK;
     ui.spacing_mut().interact_size.y = row_height;
@@ -34,7 +34,11 @@ pub(super) fn allocate_row(
         egui::Sense::hover(),
     );
     let button = egui::Button::new("").selected(selected).frame(false);
-    let button = if row.root_position.is_some() && root_drag_enabled {
+    let can_reorder = row
+        .root_position
+        .or(row.sibling_position)
+        .is_some_and(|(_, sibling_count)| sibling_count > 1);
+    let button = if can_reorder && sibling_drag_enabled {
         button.sense(egui::Sense::click_and_drag())
     } else {
         button

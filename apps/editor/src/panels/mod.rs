@@ -6,5 +6,5 @@ pub mod hierarchy_browser;
 pub mod imported;
 pub mod inspector;
 pub mod project;
-mod root_drag;
+mod sibling_drag;
 pub mod viewport;
