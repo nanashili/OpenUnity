@@ -59,12 +59,12 @@ public class Transform : Component
             {
                 0 => 0,
                 -20 => throw new ArgumentOutOfRangeException(
-                    nameof(index), index, "Sibling index must identify an existing child position."),
+                    nameof(index), index, "Sibling index must identify an existing child or root position."),
                 -8 => throw new InvalidOperationException(
                     "OpenUnity cannot reorder a malformed or mixed-ownership Transform group."),
                 -2 => throw new MissingReferenceException("The OpenUnity Transform has been destroyed."),
                 -11 => throw new NotSupportedException(
-                    "OpenUnity does not support reordering a live unparented Transform."),
+                    "OpenUnity cannot reorder an unowned root without an ordered scene group."),
                 -17 => throw new InvalidOperationException(
                     "OpenUnity cannot reorder this Transform while scene staging is active or from a non-owner thread."),
                 _ => throw RuntimeContext.Failure("sibling index assignment", status)

@@ -9,7 +9,7 @@ pub enum RuntimeError {
     InvalidObject,
     /// Object kind, index, or property is unsupported.
     InvalidKind,
-    /// A requested sibling index is outside the direct parent's child range.
+    /// A requested sibling index is outside its child or scene-root group.
     InvalidSiblingIndex,
     /// A numeric input or result is invalid.
     Numeric,

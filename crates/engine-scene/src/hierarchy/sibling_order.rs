@@ -57,4 +57,38 @@ impl SceneHierarchy {
         self.revision = committed_revision;
         Ok(())
     }
+
+    /// Reorder a Transform within its existing scene-root sequence.
+    pub fn set_scene_root_sibling_index(
+        &mut self,
+        scene: ObjectId,
+        transform: ObjectId,
+        index: usize,
+    ) -> Result<(), HierarchyError> {
+        let roots = self.validate_scene_root_group(scene, transform)?;
+        if index >= roots.len() {
+            return Err(HierarchyError::InvalidSiblingIndex {
+                index,
+                count: roots.len(),
+            });
+        }
+
+        let current_index = roots
+            .iter()
+            .position(|&root| root == transform)
+            .ok_or(HierarchyError::MalformedTopology)?;
+        if current_index == index {
+            return Ok(());
+        }
+
+        let committed_revision = self.next_revision()?;
+        let roots = self
+            .scene_roots
+            .get_mut(&scene)
+            .ok_or(HierarchyError::MalformedTopology)?;
+        let moved = roots.remove(current_index);
+        roots.insert(index, moved);
+        self.revision = committed_revision;
+        Ok(())
+    }
 }

@@ -1,12 +1,14 @@
-//! Parent-local sibling reordering admission and mutation.
+//! Parent-local and scene-root sibling reordering admission and mutation.
 
 use crate::{Runtime, RuntimeError};
 use engine_object::ObjectId;
+use engine_scene::RootOwner;
 
 impl Runtime {
-    /// Move a live Transform within its existing direct parent's child sequence.
+    /// Move a live Transform within its parent's children or scene-root sequence.
     /// # Errors
-    /// Rejects stale/root/malformed identities, unavailable scenes, and invalid indices.
+    /// Rejects stale/malformed identities, unowned roots, unavailable scenes,
+    /// and invalid indices.
     pub fn transform_set_sibling_index(
         &mut self,
         transform: ObjectId,
@@ -17,18 +19,49 @@ impl Runtime {
         let parent = self
             .hierarchy
             .validated_parent(transform)
-            .map_err(crate::hierarchy::map_hierarchy_error)?
-            .ok_or(RuntimeError::Unsupported)?;
+            .map_err(crate::hierarchy::map_hierarchy_error)?;
+
+        match parent {
+            Some(parent) => self.set_parented_sibling_index(transform, parent, index),
+            None => self.set_scene_root_sibling_index(transform, index),
+        }
+    }
+
+    fn set_parented_sibling_index(
+        &mut self,
+        transform: ObjectId,
+        parent: ObjectId,
+        index: i32,
+    ) -> Result<(), RuntimeError> {
         let children = self.validate_sibling_group(transform, parent)?;
         self.validate_sibling_scene(parent)?;
-
-        let index = usize::try_from(index).map_err(|_| RuntimeError::InvalidSiblingIndex)?;
-        if index >= children.len() {
-            return Err(RuntimeError::InvalidSiblingIndex);
-        }
+        let index = checked_sibling_index(index, children.len())?;
 
         self.hierarchy
             .set_sibling_index(transform, index)
+            .map_err(crate::hierarchy::map_hierarchy_error)
+    }
+
+    fn set_scene_root_sibling_index(
+        &mut self,
+        transform: ObjectId,
+        index: i32,
+    ) -> Result<(), RuntimeError> {
+        let scene = match self.hierarchy.root_owner(transform) {
+            Some(RootOwner::Scene(scene)) => scene,
+            Some(RootOwner::Unowned) => return Err(RuntimeError::Unsupported),
+            None => return Err(RuntimeError::InvalidKind),
+        };
+        let roots = self
+            .hierarchy
+            .validate_scene_root_group(scene, transform)
+            .map_err(crate::hierarchy::map_hierarchy_error)?;
+        self.validate_scene_root_group(scene, roots)?;
+        self.scene_hierarchy_admission(transform)?;
+
+        let index = checked_sibling_index(index, roots.len())?;
+        self.hierarchy
+            .set_scene_root_sibling_index(scene, transform, index)
             .map_err(crate::hierarchy::map_hierarchy_error)
     }
 
@@ -85,4 +118,31 @@ impl Runtime {
     fn validate_sibling_scene(&self, parent: ObjectId) -> Result<(), RuntimeError> {
         self.scene_hierarchy_admission(parent)
     }
+
+    fn validate_scene_root_group(
+        &self,
+        scene: ObjectId,
+        roots: &[ObjectId],
+    ) -> Result<(), RuntimeError> {
+        for &root in roots {
+            self.validate_live_transform(root)?;
+            if self.hierarchy.parent_of(root).is_some()
+                || self.hierarchy.root_owner(root) != Some(RootOwner::Scene(scene))
+                || self.scene_hierarchy_owner(root) != Some(scene)
+            {
+                return Err(RuntimeError::InvalidKind);
+            }
+        }
+
+        Ok(())
+    }
+}
+
+fn checked_sibling_index(index: i32, count: usize) -> Result<usize, RuntimeError> {
+    let index = usize::try_from(index).map_err(|_| RuntimeError::InvalidSiblingIndex)?;
+    if index >= count {
+        return Err(RuntimeError::InvalidSiblingIndex);
+    }
+
+    Ok(index)
 }

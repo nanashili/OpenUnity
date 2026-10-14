@@ -64,6 +64,33 @@ impl SceneHierarchy {
         Ok(children)
     }
 
+    /// Validate the complete ordered root group for a published scene.
+    pub fn validate_scene_root_group(
+        &self,
+        scene: ObjectId,
+        target: ObjectId,
+    ) -> Result<&[ObjectId], HierarchyError> {
+        if !self.contains(target) {
+            return Err(HierarchyError::MissingNode);
+        }
+        if self.parents.contains_key(&target)
+            || self.root_owners.get(&target) != Some(&RootOwner::Scene(scene))
+        {
+            return Err(HierarchyError::MalformedTopology);
+        }
+
+        let roots = self
+            .scene_roots
+            .get(&scene)
+            .ok_or(HierarchyError::MalformedTopology)?;
+        self.validate_scene_roots(scene, roots)?;
+        if occurrence_count(roots, target) != 1 {
+            return Err(HierarchyError::MalformedTopology);
+        }
+
+        Ok(roots)
+    }
+
     pub(super) fn validate_local_membership(
         &self,
         transform: ObjectId,
@@ -160,18 +187,7 @@ impl SceneHierarchy {
         }
 
         for (&scene, roots) in &self.scene_roots {
-            let mut unique_roots = HashSet::new();
-            unique_roots
-                .try_reserve(roots.len())
-                .map_err(|_| HierarchyError::Allocation)?;
-            for &root in roots {
-                if !unique_roots.insert(root)
-                    || self.parents.contains_key(&root)
-                    || self.root_owners.get(&root) != Some(&RootOwner::Scene(scene))
-                {
-                    return Err(HierarchyError::MalformedTopology);
-                }
-            }
+            self.validate_scene_roots(scene, roots)?;
         }
 
         for &root in &self.unowned_roots {
@@ -188,6 +204,30 @@ impl SceneHierarchy {
         self.children
             .get(&parent)
             .map_or(0, |children| occurrence_count(children, child))
+    }
+
+    pub(super) fn validate_scene_roots(
+        &self,
+        scene: ObjectId,
+        roots: &[ObjectId],
+    ) -> Result<(), HierarchyError> {
+        let mut unique_roots = HashSet::new();
+        unique_roots
+            .try_reserve(roots.len())
+            .map_err(|_| HierarchyError::Allocation)?;
+
+        for &root in roots {
+            if !unique_roots.insert(root)
+                || !self.children.contains_key(&root)
+                || self.parents.contains_key(&root)
+                || self.root_owners.get(&root) != Some(&RootOwner::Scene(scene))
+                || self.unowned_roots.contains(&root)
+            {
+                return Err(HierarchyError::MalformedTopology);
+            }
+        }
+
+        Ok(())
     }
 }
 

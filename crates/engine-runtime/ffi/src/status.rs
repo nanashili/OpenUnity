@@ -44,7 +44,7 @@ pub const STAGING_BUSY: i32 = -17;
 pub const PHYSICS_UNSUPPORTED: i32 = -18;
 /// Invalid query geometry, including inverted bounds or a zero-length ray.
 pub const INVALID_PHYSICS_QUERY: i32 = -19;
-/// Sibling index is outside the direct parent's child range.
+/// Sibling index is outside its child or scene-root group.
 pub const INVALID_SIBLING_INDEX: i32 = -20;
 
 pub(crate) fn runtime_error(error: RuntimeError) -> i32 {

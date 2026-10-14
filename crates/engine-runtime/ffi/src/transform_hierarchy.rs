@@ -79,7 +79,7 @@ pub extern "C" fn ou_transform_set_parent(
     .unwrap_or_else(|error| error)
 }
 
-/// Reorder a Transform within its existing direct parent's child sequence.
+/// Reorder a Transform within its existing child or scene-root sequence.
 // SAFETY: unique symbol within the reserved ABI namespace.
 #[unsafe(no_mangle)]
 pub extern "C" fn ou_transform_set_sibling_index(runtime: i64, transform: i64, index: i32) -> i32 {

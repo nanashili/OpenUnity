@@ -31,13 +31,13 @@ pub enum HierarchyError {
     MalformedTopology,
     /// A reparent request would make an ancestor its own descendant.
     Cycle,
-    /// Root sibling reordering is outside this graph contract.
+    /// The parent-local reorder operation cannot reorder a root.
     RootReorderingUnsupported,
-    /// A requested child index is outside its direct sibling group.
+    /// A requested sibling index is outside its direct group.
     InvalidSiblingIndex {
         /// Requested zero-based sibling position.
         index: usize,
-        /// Number of entries in the selected child group.
+        /// Number of entries in the selected sibling group.
         count: usize,
     },
     /// A required collection could not reserve capacity.
@@ -53,8 +53,8 @@ impl fmt::Display for HierarchyError {
             Self::DuplicateNode => "hierarchy node already exists",
             Self::MalformedTopology => "hierarchy memberships are inconsistent",
             Self::Cycle => "hierarchy operation would create a cycle",
-            Self::RootReorderingUnsupported => "root sibling reordering is unsupported",
-            Self::InvalidSiblingIndex { .. } => "sibling index is outside the child group",
+            Self::RootReorderingUnsupported => "parent-local sibling reordering requires a parent",
+            Self::InvalidSiblingIndex { .. } => "sibling index is outside the selected group",
             Self::Allocation => "hierarchy storage could not reserve capacity",
             Self::StalePreparation => "prepared hierarchy change is stale",
         };

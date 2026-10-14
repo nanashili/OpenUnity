@@ -183,21 +183,4 @@ impl SceneHierarchy {
             new_scene_roots,
         })
     }
-
-    fn validate_scene_roots(
-        &self,
-        scene: ObjectId,
-        roots: &[ObjectId],
-    ) -> Result<(), HierarchyError> {
-        for (index, &root) in roots.iter().enumerate() {
-            if roots[..index].contains(&root)
-                || self.parents.contains_key(&root)
-                || self.root_owners.get(&root) != Some(&RootOwner::Scene(scene))
-                || !self.children.contains_key(&root)
-            {
-                return Err(HierarchyError::MalformedTopology);
-            }
-        }
-        Ok(())
-    }
 }
