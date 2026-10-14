@@ -72,8 +72,24 @@ impl SceneVisibility {
         toggle_subtree_state(scene, id, recursive, &mut self.hidden);
     }
 
+    pub(crate) fn toggle_visibility_for_selection(
+        &mut self,
+        scene: &Scene,
+        selected: impl IntoIterator<Item = EntityId>,
+    ) {
+        toggle_selected_subtrees(scene, selected, &mut self.hidden);
+    }
+
     pub(crate) fn toggle_pickability(&mut self, scene: &Scene, id: EntityId, recursive: bool) {
         toggle_subtree_state(scene, id, recursive, &mut self.unpickable);
+    }
+
+    pub(crate) fn toggle_pickability_for_selection(
+        &mut self,
+        scene: &Scene,
+        selected: impl IntoIterator<Item = EntityId>,
+    ) {
+        toggle_selected_subtrees(scene, selected, &mut self.unpickable);
     }
 
     pub(crate) fn row_states(&self, scene: &Scene) -> BTreeMap<EntityId, SceneRowState> {
@@ -137,6 +153,41 @@ fn toggle_subtree_state(
             disabled.insert(target);
         }
     }
+}
+
+fn toggle_selected_subtrees(
+    scene: &Scene,
+    selected: impl IntoIterator<Item = EntityId>,
+    disabled: &mut BTreeSet<EntityId>,
+) {
+    let selected = selected
+        .into_iter()
+        .filter(|id| scene.get(*id).is_some())
+        .collect::<BTreeSet<_>>();
+
+    let roots = selected
+        .iter()
+        .copied()
+        .filter(|id| !has_selected_ancestor(scene, *id, &selected))
+        .collect::<Vec<_>>();
+
+    for root in roots {
+        toggle_subtree_state(scene, root, true, disabled);
+    }
+}
+
+fn has_selected_ancestor(scene: &Scene, id: EntityId, selected: &BTreeSet<EntityId>) -> bool {
+    let mut ancestor = scene.get(id).and_then(|entity| entity.parent);
+
+    while let Some(current) = ancestor {
+        if selected.contains(&current) {
+            return true;
+        }
+
+        ancestor = scene.get(current).and_then(|entity| entity.parent);
+    }
+
+    false
 }
 
 fn collect_subtree(scene: &Scene, root: EntityId) -> Vec<EntityId> {

@@ -21,6 +21,8 @@ impl EditorApp {
                 Command::Undo => self.undo().map(|_| ()),
                 Command::Redo => self.redo().map(|_| ()),
                 Command::DeleteSelection => self.apply_action(EditorAction::DeleteSelection),
+                Command::ToggleSceneVisibility => self.toggle_selected_scene_visibility(),
+                Command::ToggleScenePicking => self.toggle_selected_scene_picking(),
                 Command::ClearSelection => {
                     if let Some(document) = &mut self.imported {
                         document.select(None, false).map_err(|e| e.to_string())?;
@@ -32,6 +34,30 @@ impl EditorApp {
                 }
             });
         self.report(result, "Document command completed.");
+    }
+
+    fn toggle_selected_scene_visibility(&mut self) -> Result<(), String> {
+        if self.imported.is_some() {
+            return Err(
+                "Scene visibility shortcuts are unavailable for imported documents.".into(),
+            );
+        }
+
+        let selected = self.document.selection().ids().collect::<Vec<_>>();
+        self.scene_visibility
+            .toggle_visibility_for_selection(self.document.scene(), selected);
+        Ok(())
+    }
+
+    fn toggle_selected_scene_picking(&mut self) -> Result<(), String> {
+        if self.imported.is_some() {
+            return Err("Scene picking shortcuts are unavailable for imported documents.".into());
+        }
+
+        let selected = self.document.selection().ids().collect::<Vec<_>>();
+        self.scene_visibility
+            .toggle_pickability_for_selection(self.document.scene(), selected);
+        Ok(())
     }
 
     pub(super) fn shortcuts(&mut self, ctx: &Context) {
@@ -80,6 +106,8 @@ impl EditorApp {
                         egui::Key::S => Key::S,
                         egui::Key::Z => Key::Z,
                         egui::Key::Y => Key::Y,
+                        egui::Key::H => Key::H,
+                        egui::Key::L => Key::L,
                         egui::Key::Delete => Key::Delete,
                         egui::Key::Escape => Key::Escape,
                         _ => return None,

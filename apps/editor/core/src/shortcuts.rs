@@ -17,6 +17,10 @@ pub enum Key {
     Z,
     /// Letter Y.
     Y,
+    /// Letter H.
+    H,
+    /// Letter L.
+    L,
     /// Delete key.
     Delete,
     /// Escape key.
@@ -62,6 +66,10 @@ pub enum Command {
     DeleteSelection,
     /// Clear document selection.
     ClearSelection,
+    /// Toggle Scene view visibility for selected authored GameObjects.
+    ToggleSceneVisibility,
+    /// Toggle Scene view pickability for selected authored GameObjects.
+    ToggleScenePicking,
 }
 
 /// Resolve a global shortcut without executing it or checking document state.
@@ -69,7 +77,7 @@ pub enum Command {
 /// Either Control or Command enables letter shortcuts. Both may be true because
 /// a frontend can report Command as its platform's logical shortcut modifier.
 /// Alt is never accepted; Shift is accepted only for Control/Command+Shift+Z.
-/// Delete and Escape require no modifiers. Text focus suppresses all commands.
+/// Delete, Escape, H, and L require no modifiers. Text focus suppresses all commands.
 pub fn resolve(chord: Chord, text_input: bool) -> Option<Command> {
     if text_input || chord.modifiers.alt {
         return None;
@@ -89,6 +97,8 @@ pub fn resolve(chord: Chord, text_input: bool) -> Option<Command> {
         return None;
     }
     match chord.key {
+        Key::H => Some(Command::ToggleSceneVisibility),
+        Key::L => Some(Command::ToggleScenePicking),
         Key::Delete => Some(Command::DeleteSelection),
         Key::Escape => Some(Command::ClearSelection),
         _ => None,
@@ -119,7 +129,12 @@ impl StateAvailability {
         match command {
             Command::Undo if !self.can_undo => Err("Nothing to undo."),
             Command::Redo if !self.can_redo => Err("Nothing to redo."),
-            Command::DeleteSelection | Command::ClearSelection if !self.has_selection => {
+            Command::DeleteSelection
+            | Command::ClearSelection
+            | Command::ToggleSceneVisibility
+            | Command::ToggleScenePicking
+                if !self.has_selection =>
+            {
                 Err("No entities selected.")
             }
             Command::Save if !self.has_save_path => {
