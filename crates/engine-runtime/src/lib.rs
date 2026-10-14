@@ -23,6 +23,7 @@ mod scene;
 mod scene_snapshot;
 mod timing;
 mod transform;
+mod transform_detach;
 mod transform_vectors;
 
 pub use context::Runtime;

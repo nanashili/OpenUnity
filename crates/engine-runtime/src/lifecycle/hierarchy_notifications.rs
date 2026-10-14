@@ -62,6 +62,22 @@ impl Runtime {
         Ok(notifications)
     }
 
+    pub(crate) fn prepare_detach_children_notifications(
+        &mut self,
+        parent: ObjectId,
+        children: &[ObjectId],
+    ) -> Result<Vec<Notification>, RuntimeError> {
+        let mut notifications = Vec::new();
+        self.append_transform_notifications(parent, CHILDREN_CHANGED, &mut notifications)?;
+
+        for &child in children {
+            self.append_subtree_notifications(child, true, &mut notifications)?;
+        }
+
+        self.reserve_hierarchy_notifications(notifications.len())?;
+        Ok(notifications)
+    }
+
     pub(crate) fn commit_hierarchy_notifications(&mut self, notifications: Vec<Notification>) {
         for (component, event) in notifications {
             self.lifecycle

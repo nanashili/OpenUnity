@@ -1,5 +1,6 @@
 //! Canonical parent, ordered-child, and scene-root graph storage.
 
+mod batch_reparent;
 mod graph;
 mod registration;
 mod removal;

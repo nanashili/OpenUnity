@@ -95,7 +95,7 @@ impl Runtime {
         Ok(HierarchyTarget::Root(target))
     }
 
-    fn reparent_local_pose(
+    pub(crate) fn reparent_local_pose(
         &self,
         id: ObjectId,
         parent: Option<ObjectId>,

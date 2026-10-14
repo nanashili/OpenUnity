@@ -65,6 +65,16 @@ public partial class Transform
 
     public void SetAsFirstSibling() => SetSiblingIndex(0);
 
+    public void DetachChildren()
+    {
+        Context.CheckLifecycleThreadIfInitialized();
+        Context.RequireTransformDetach();
+        int status = Context.Invoke(runtime =>
+            OpenUnityNative.ou_transform_detach_children(runtime, Identity));
+        CheckNative(status, "child detachment");
+        Context.PumpLifecycleIfInitialized();
+    }
+
     public void SetAsLastSibling() => ChangeSiblingOrder(
         runtime => OpenUnityNative.ou_transform_set_as_last_sibling(runtime, Identity),
         "last sibling assignment");

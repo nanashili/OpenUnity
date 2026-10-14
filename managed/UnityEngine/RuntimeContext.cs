@@ -45,6 +45,21 @@ internal sealed class RuntimeContext : SafeHandle
             throw new NotSupportedException("OpenUnity Transform direction ABI 1.0 is unavailable.", error);
         }
     });
+    private static readonly Lazy<bool> TransformDetachCapability = new(() =>
+    {
+        try
+        {
+            uint abi = OpenUnityNative.ou_transform_detach_abi_version();
+            if (abi != OpenUnityNative.TransformDetachAbiVersion)
+                throw new NotSupportedException(
+                    $"OpenUnity Transform detach ABI 1.0 is required; received 0x{abi:X8}.");
+            return true;
+        }
+        catch (EntryPointNotFoundException error)
+        {
+            throw new NotSupportedException("OpenUnity Transform detach ABI 1.0 is unavailable.", error);
+        }
+    });
     private static readonly Lazy<bool> TransformVectorCapability = new(() =>
     {
         try
@@ -106,6 +121,8 @@ internal sealed class RuntimeContext : SafeHandle
     internal void RequireTransformHierarchy() => _ = TransformHierarchyCapability.Value;
 
     internal void RequireTransformDirection() => _ = TransformDirectionCapability.Value;
+
+    internal void RequireTransformDetach() => _ = TransformDetachCapability.Value;
 
     internal void RequireTransformVector() => _ = TransformVectorCapability.Value;
 
