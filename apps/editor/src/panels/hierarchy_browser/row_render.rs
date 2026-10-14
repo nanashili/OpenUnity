@@ -26,7 +26,7 @@ pub(super) struct SiblingDragContext<'a> {
 pub(super) struct RowContext<'a> {
     pub(super) row_index: usize,
     pub(super) selected: bool,
-    pub(super) visibility_state: crate::scene_visibility::VisibilityRowState,
+    pub(super) row_state: crate::scene_visibility::SceneRowState,
     pub(super) authored_scene: Option<(
         &'a openunity_editor_core::scene::Scene,
         &'a mut crate::scene_visibility::SceneVisibility,
@@ -40,7 +40,7 @@ pub(super) fn render_row(ui: &mut Ui, row: &CachedRow, context: RowContext<'_>) 
     let RowContext {
         row_index,
         selected,
-        visibility_state,
+        row_state,
         authored_scene,
         has_children,
         expanded,
@@ -48,9 +48,10 @@ pub(super) fn render_row(ui: &mut Ui, row: &CachedRow, context: RowContext<'_>) 
     } = context;
     let layout = allocate_row(ui, row, selected, has_children, sibling_drag.enabled);
     let branch_toggle = show_disclosure(ui, row_index, &layout, expanded);
-    let content = paint_row_content(ui, row, &layout);
-    let visibility_clicked = authored_scene.is_some_and(|(scene, visibility)| {
-        render_visibility_control(ui, row, &layout, visibility_state, scene, visibility)
+    let reserve_control_column = authored_scene.is_some() || sibling_drag.structural_edits_enabled;
+    let content = paint_row_content(ui, row, &layout, reserve_control_column);
+    let scene_control_hovered = authored_scene.is_some_and(|(scene, visibility)| {
+        render_scene_controls(ui, row, &layout, row_state, scene, visibility)
     });
     let sibling_action = sibling_drag
         .structural_edits_enabled
@@ -63,7 +64,7 @@ pub(super) fn render_row(ui: &mut Ui, row: &CachedRow, context: RowContext<'_>) 
         row.id,
         row.root_position.or(row.sibling_position),
         sibling_drag.order,
-        sibling_drag.enabled && !visibility_clicked,
+        sibling_drag.enabled && !scene_control_hovered,
     );
     let action = sibling_drop
         .operation
@@ -77,7 +78,7 @@ pub(super) fn render_row(ui: &mut Ui, row: &CachedRow, context: RowContext<'_>) 
         })
         .or(sibling_action)
         .or_else(|| {
-            (!sibling_drop.completed && !visibility_clicked)
+            (!sibling_drop.completed && !scene_control_hovered)
                 .then(|| row_action(&response, row, branch_toggle.is_some()))
                 .flatten()
         });
@@ -95,28 +96,60 @@ pub(super) fn render_row(ui: &mut Ui, row: &CachedRow, context: RowContext<'_>) 
     }
 }
 
-fn render_visibility_control(
+fn render_scene_controls(
     ui: &mut Ui,
     row: &CachedRow,
     layout: &RowLayout,
-    state: crate::scene_visibility::VisibilityRowState,
+    state: crate::scene_visibility::SceneRowState,
     scene: &openunity_editor_core::scene::Scene,
     visibility: &mut crate::scene_visibility::SceneVisibility,
 ) -> bool {
-    let (glyph, description) = state.control_label();
+    let recursive = !ui.input(|input| input.modifiers.alt);
+    let visibility_hovered = render_scene_control(
+        ui,
+        layout.rect,
+        12.0,
+        state.visibility_label(),
+        "Alt-click changes only this entity.",
+        |visibility| visibility.toggle_visibility(scene, row.id, recursive),
+        visibility,
+    );
+    let picking_hovered = if !state.pickable || layout.response.hovered() {
+        render_scene_control(
+            ui,
+            layout.rect,
+            34.0,
+            state.picking_label(),
+            "Alt-click changes picking only for this entity.",
+            |visibility| visibility.toggle_pickability(scene, row.id, recursive),
+            visibility,
+        )
+    } else {
+        false
+    };
+
+    visibility_hovered || picking_hovered
+}
+
+fn render_scene_control(
+    ui: &mut Ui,
+    row: egui::Rect,
+    offset_from_right: f32,
+    (glyph, label): (&'static str, &'static str),
+    modifier_hint: &'static str,
+    toggle: impl FnOnce(&mut crate::scene_visibility::SceneVisibility),
+    visibility: &mut crate::scene_visibility::SceneVisibility,
+) -> bool {
     let rect = egui::Rect::from_center_size(
-        egui::pos2(layout.rect.right() - 12.0, layout.rect.center().y),
-        egui::vec2(20.0, layout.rect.height()),
+        egui::pos2(row.right() - offset_from_right, row.center().y),
+        egui::vec2(20.0, row.height()),
     );
     let response = ui
         .put(rect, egui::Button::new(glyph).frame(false))
-        .on_hover_text(format!(
-            "{description}. Alt-click changes only this entity."
-        ));
+        .on_hover_text(format!("{label}. {modifier_hint}"));
 
     if response.clicked() {
-        let recursive = !ui.input(|input| input.modifiers.alt);
-        visibility.toggle(scene, row.id, recursive);
+        toggle(visibility);
     }
 
     response.hovered()

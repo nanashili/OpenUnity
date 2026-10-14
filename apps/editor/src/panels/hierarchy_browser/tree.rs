@@ -172,7 +172,7 @@ impl HierarchyBrowser {
                                 row_render::RowContext {
                                     row_index,
                                     selected,
-                                    visibility_state: visibility_states
+                                    row_state: visibility_states
                                         .as_ref()
                                         .and_then(|states| states.get(&row.id))
                                         .copied()

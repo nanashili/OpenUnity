@@ -25,7 +25,7 @@ fn first_sibling_clicked(
     id: openunity_editor_core::scene::EntityId,
     row: Rect,
 ) -> bool {
-    let rect = button_rect(row, 3.0);
+    let rect = button_rect(row, 5.0);
     ui.push_id(("first_sibling", id.0), |ui| {
         ui.put(rect, egui::Button::new("↟").frame(false))
             .on_hover_text("Set as first sibling")
@@ -39,7 +39,7 @@ fn last_sibling_clicked(
     id: openunity_editor_core::scene::EntityId,
     row: Rect,
 ) -> bool {
-    let rect = button_rect(row, 2.0);
+    let rect = button_rect(row, 4.0);
     ui.push_id(("last_sibling", id.0), |ui| {
         ui.put(rect, egui::Button::new("↡").frame(false))
             .on_hover_text("Set as last sibling")

@@ -77,7 +77,9 @@ impl ViewportPanel {
                     egui::StrokeKind::Outside,
                 );
             }
-            if pointer.is_some_and(|point| bounds.expand(6.0).contains(point)) {
+            if visibility.is_pickable(entity.id)
+                && pointer.is_some_and(|point| bounds.expand(6.0).contains(point))
+            {
                 // Later identities draw above earlier ones, so also win overlap selection.
                 hit = Some(entity.id);
             }

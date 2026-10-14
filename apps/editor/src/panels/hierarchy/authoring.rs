@@ -172,7 +172,7 @@ fn forest(
                 let sibling_order = scene.sibling_group(entity.parent).unwrap_or_default();
                 let has_children = super::expansion::has_renderable_children(scene, id, depth);
                 let collapsed = expansion.is_collapsed(id);
-                let visibility_state = row_states
+                let row_state = row_states
                     .as_ref()
                     .and_then(|states| states.get(&id))
                     .copied()
@@ -188,7 +188,7 @@ fn forest(
                         collapsed,
                     },
                     selected,
-                    visibility_state,
+                    row_state,
                     scene,
                     visibility.as_deref_mut(),
                     actions,

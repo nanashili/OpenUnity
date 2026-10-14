@@ -108,7 +108,12 @@ pub(super) fn show_disclosure(
     disclosure_response.clicked().then_some(row_index)
 }
 
-pub(super) fn paint_row_content(ui: &Ui, row: &CachedRow, layout: &RowLayout) -> RowContent {
+pub(super) fn paint_row_content(
+    ui: &Ui,
+    row: &CachedRow,
+    layout: &RowLayout,
+    reserve_control_column: bool,
+) -> RowContent {
     let icon_rect = egui::Rect::from_min_size(
         egui::pos2(
             layout.indent_anchor + DISCLOSURE_RESERVATION,
@@ -135,17 +140,29 @@ pub(super) fn paint_row_content(ui: &Ui, row: &CachedRow, layout: &RowLayout) ->
         icon_rect.right() + appearance::TREE_ICON_LABEL_GAP,
         layout.rect.center().y,
     );
-    let label_rect = ui.painter().text(
-        label_origin,
-        egui::Align2::LEFT_CENTER,
-        &row.name,
-        egui::FontId::proportional(12.0),
-        if row.active {
-            appearance::TEXT
-        } else {
-            appearance::MUTED
-        },
+    let reserved_control_width = if reserve_control_column { 100.0 } else { 0.0 };
+    let label_clip = egui::Rect::from_min_max(
+        egui::pos2(label_origin.x, layout.rect.top()),
+        egui::pos2(
+            (layout.rect.right() - reserved_control_width).max(label_origin.x),
+            layout.rect.bottom(),
+        ),
     );
+    let label_rect = ui
+        .painter()
+        .with_clip_rect(label_clip)
+        .text(
+            label_origin,
+            egui::Align2::LEFT_CENTER,
+            &row.name,
+            egui::FontId::proportional(12.0),
+            if row.active {
+                appearance::TEXT
+            } else {
+                appearance::MUTED
+            },
+        )
+        .intersect(label_clip);
 
     RowContent {
         icon_rect,
