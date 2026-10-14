@@ -2,6 +2,7 @@
 //! Only the reviewed authored text dialect is accepted; unsupported input fails.
 #![forbid(unsafe_code)]
 
+mod hierarchy;
 mod importer;
 mod render_binding_owners;
 mod render_reference_extraction;
@@ -10,6 +11,10 @@ mod yaml;
 pub use engine_serialization::{
     FieldPlan, FieldValue, GameObjectPlan, MAX_DEPTH, MAX_FIELDS, MAX_INPUT_BYTES, MAX_OBJECTS,
     MAX_STRING_BYTES, SceneError, ScenePlan, ScriptPlan, TransformPlan, parse_plan,
+};
+pub use hierarchy::{
+    HierarchyError, HierarchyTarget, PreparedHierarchyChange, PreparedRegistration,
+    PreparedSceneMerge, RootOwner, SceneHierarchy,
 };
 pub use importer::{
     ProjectRenderImport, ProjectRenderSourceImport, import_project,

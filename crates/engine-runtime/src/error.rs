@@ -9,6 +9,8 @@ pub enum RuntimeError {
     InvalidObject,
     /// Object kind, index, or property is unsupported.
     InvalidKind,
+    /// A requested sibling index is outside the direct parent's child range.
+    InvalidSiblingIndex,
     /// A numeric input or result is invalid.
     Numeric,
     /// A parent assignment would form a cycle.

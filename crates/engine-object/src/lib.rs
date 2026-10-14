@@ -16,7 +16,7 @@ pub use component_publication::{
 pub use engine_identifiers::{IdentityExhausted, ObjectId};
 pub use object_access::MAX_OBJECT_NAME_BYTES;
 pub use object_error::ObjectError;
-pub use object_store::{ObjectKind, ObjectStore};
+pub use object_store::{ObjectKind, ObjectStore, PreparedGameObject};
 pub use registry::Registry;
 
 #[cfg(test)]

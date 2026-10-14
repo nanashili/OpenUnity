@@ -69,14 +69,17 @@ pub use scene_snapshot::{
 pub use status::{
     COUNT_OVERFLOW, GAMEPLAY_FAULTED, HIERARCHY_CYCLE, IDENTITY_EXHAUSTED, INSUFFICIENT_CAPACITY,
     INVALID_BUFFER, INVALID_KIND, INVALID_LIFECYCLE, INVALID_NUMERIC, INVALID_OBJECT,
-    INVALID_PHYSICS_QUERY, INVALID_RUNTIME, INVALID_SCENE, INVALID_SCENE_PLAN, INVALID_UTF8,
-    PHYSICS_UNSUPPORTED, STAGING_BUSY, STORE_UNAVAILABLE, UNSUPPORTED_TRANSFORM,
+    INVALID_PHYSICS_QUERY, INVALID_RUNTIME, INVALID_SCENE, INVALID_SCENE_PLAN,
+    INVALID_SIBLING_INDEX, INVALID_UTF8, PHYSICS_UNSUPPORTED, STAGING_BUSY, STORE_UNAVAILABLE,
+    UNSUPPORTED_TRANSFORM,
 };
 pub use timing::{
     TIME_ABI_VERSION, ou_time_abi_version, ou_time_begin_fixed, ou_time_begin_frame,
     ou_time_configure, ou_time_next, ou_time_set, ou_time_snapshot,
 };
 pub use transform_hierarchy::{
-    ou_transform_child, ou_transform_child_count, ou_transform_parent, ou_transform_set_parent,
+    TRANSFORM_HIERARCHY_ABI_VERSION, ou_transform_child, ou_transform_child_count,
+    ou_transform_hierarchy_abi_version, ou_transform_parent, ou_transform_set_parent,
+    ou_transform_set_sibling_index,
 };
 pub use transform_pose::{ou_transform_point, ou_transform_read, ou_transform_write};

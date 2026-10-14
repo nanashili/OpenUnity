@@ -1,6 +1,6 @@
 //! Private object metadata, independent of hierarchy poses and callback scheduling.
 
-use crate::{IdentityExhausted, ObjectId};
+use crate::{IdentityExhausted, ObjectError, ObjectId};
 use engine_identifiers::allocate_next;
 use std::collections::HashMap;
 
@@ -51,6 +51,12 @@ pub struct ObjectStore {
     pub(crate) records: HashMap<ObjectId, ObjectRecord>,
 }
 
+/// Capacity and owned name prepared before allocating a GameObject identity pair.
+#[derive(Debug)]
+pub struct PreparedGameObject {
+    name: String,
+}
+
 impl ObjectStore {
     /// Allocate a plain object with an empty owned name.
     /// # Errors
@@ -76,10 +82,45 @@ impl ObjectStore {
         let owner = allocate_next()?;
         let transform = allocate_next()?;
 
+        self.insert_gameobject_pair(owner, transform, name.to_owned());
+        Ok((owner, transform))
+    }
+
+    /// Reserve both object records and materialize the name before identity allocation.
+    /// # Errors
+    /// Returns `CapacityExhausted` without allocating either identity.
+    pub fn prepare_gameobject(&mut self, name: &str) -> Result<PreparedGameObject, ObjectError> {
+        self.records
+            .try_reserve(2)
+            .map_err(|_| ObjectError::CapacityExhausted)?;
+
+        let mut owned_name = String::new();
+        owned_name
+            .try_reserve_exact(name.len())
+            .map_err(|_| ObjectError::CapacityExhausted)?;
+        owned_name.push_str(name);
+
+        Ok(PreparedGameObject { name: owned_name })
+    }
+
+    /// Allocate a prepared pair and publish both records using reserved capacity.
+    /// # Errors
+    /// Identity exhaustion may consume the first monotonic ID but publishes no record.
+    pub fn create_prepared_gameobject(
+        &mut self,
+        prepared: PreparedGameObject,
+    ) -> Result<(ObjectId, ObjectId), ObjectError> {
+        let owner = allocate_next()?;
+        let transform = allocate_next()?;
+        self.insert_gameobject_pair(owner, transform, prepared.name);
+        Ok((owner, transform))
+    }
+
+    fn insert_gameobject_pair(&mut self, owner: ObjectId, transform: ObjectId, name: String) {
         self.records.insert(
             owner,
             ObjectRecord::GameObject {
-                name: name.to_owned(),
+                name,
                 transform,
                 active_self: true,
                 scripts: Vec::new(),
@@ -90,7 +131,6 @@ impl ObjectStore {
         );
         self.records
             .insert(transform, ObjectRecord::Transform { owner });
-        Ok((owner, transform))
     }
 
     /// Whether this store owns the live identity.

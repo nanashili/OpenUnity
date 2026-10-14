@@ -8,13 +8,12 @@ use crate::{
 };
 use engine_object::{ObjectId, ObjectStore};
 use engine_physics_api::GravityConfiguration;
+use engine_scene::SceneHierarchy;
 use std::collections::HashMap;
 
 #[derive(Clone, Debug)]
 pub(super) struct TransformData {
     pub(super) owner: ObjectId,
-    pub(super) parent: Option<ObjectId>,
-    pub(super) children: Vec<ObjectId>,
     pub(super) position: Vector,
     pub(super) rotation: Quaternion,
     pub(super) scale: Vector,
@@ -25,6 +24,7 @@ pub(super) struct TransformData {
 pub struct Runtime {
     pub(super) objects: ObjectStore,
     pub(super) transforms: HashMap<ObjectId, TransformData>,
+    pub(super) hierarchy: SceneHierarchy,
     pub(super) lifecycle: lifecycle::Lifecycle,
     pub(super) input: input::InputState,
     pub(super) scenes: scene::Scenes,
@@ -39,6 +39,7 @@ impl Default for Runtime {
         Self {
             objects: ObjectStore::default(),
             transforms: HashMap::new(),
+            hierarchy: SceneHierarchy::default(),
             lifecycle: lifecycle::Lifecycle::default(),
             input: input::InputState::new(),
             scenes: scene::Scenes::default(),

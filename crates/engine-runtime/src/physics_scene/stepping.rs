@@ -81,7 +81,7 @@ impl Runtime {
             let owner = ObjectId::from_raw(*raw_owner).ok_or(RuntimeError::InvalidObject)?;
             self.validate_collision_owner(owner)?;
             let transform = self.transform(binding.transform)?;
-            if transform.owner != owner || transform.parent.is_some() {
+            if transform.owner != owner || self.transform_parent_id(binding.transform)?.is_some() {
                 return Err(RuntimeError::Lifecycle);
             }
 
@@ -107,7 +107,7 @@ impl Runtime {
         let binding = self.collision_scene.binding(owner)?;
         let transform = self.transform(binding.transform)?;
         if transform.owner != owner
-            || transform.parent.is_some()
+            || self.transform_parent_id(binding.transform)?.is_some()
             || self.gameobject_transform(owner)? != binding.transform
         {
             return Err(RuntimeError::Lifecycle);

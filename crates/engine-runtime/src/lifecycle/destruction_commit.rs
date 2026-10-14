@@ -2,6 +2,7 @@
 
 use crate::{ObjectKind, Runtime, RuntimeError};
 use engine_object::ObjectId;
+use std::collections::HashSet;
 
 /// Fully validated removal work. No callback or fallible hierarchy lookup occurs
 /// between planning this batch and committing it.
@@ -9,6 +10,7 @@ use engine_object::ObjectId;
 struct DestructionPlan {
     targets: Vec<PlannedDestruction>,
     retirement_ids: Vec<ObjectId>,
+    hierarchy: Option<engine_scene::PreparedHierarchyChange>,
 }
 
 #[derive(Debug)]
@@ -16,12 +18,7 @@ enum PlannedDestruction {
     Script(ObjectId),
     Plain(ObjectId),
     Rigidbody(ObjectId),
-    Subtree {
-        root_owner: ObjectId,
-        root_transform: ObjectId,
-        parent: Option<ObjectId>,
-        nodes: Vec<DestructionNode>,
-    },
+    Subtree { nodes: Vec<DestructionNode> },
 }
 
 #[derive(Debug)]
@@ -42,12 +39,8 @@ impl Runtime {
         }
     }
 
-    fn plan_subtree_destruction(
-        &self,
-        owner: ObjectId,
-        root: ObjectId,
-    ) -> Result<PlannedDestruction, RuntimeError> {
-        let parent = self.transform(root)?.parent;
+    fn plan_subtree_destruction(&self, root: ObjectId) -> Result<PlannedDestruction, RuntimeError> {
+        let parent = self.transform_parent_id(root)?;
         if let Some(parent) = parent {
             self.transform(parent)?;
         }
@@ -56,7 +49,7 @@ impl Runtime {
         while let Some(transform) = pending.pop() {
             let data = self.transform(transform)?;
             self.owner_scripts(data.owner)?;
-            pending.extend(data.children.iter().copied());
+            pending.extend(self.transform_children(transform)?.iter().copied());
             // Include unpublished reservations without exposing their identities.
             let scripts = self
                 .lifecycle
@@ -74,17 +67,13 @@ impl Runtime {
                 scripts,
             });
         }
-        Ok(PlannedDestruction::Subtree {
-            root_owner: owner,
-            root_transform: root,
-            parent,
-            nodes,
-        })
+        Ok(PlannedDestruction::Subtree { nodes })
     }
 
     fn plan_destruction(&self) -> Result<DestructionPlan, RuntimeError> {
         let mut targets = Vec::new();
         let mut retirement_ids = Vec::new();
+        let mut transforms = HashSet::new();
         for target in &self.lifecycle.pending_destroy {
             if !self.objects.is_alive(target.id) {
                 continue;
@@ -95,7 +84,7 @@ impl Runtime {
                 ObjectKind::Rigidbody => PlannedDestruction::Rigidbody(target.id),
                 ObjectKind::GameObject => {
                     let root = self.gameobject_transform(target.id)?;
-                    self.plan_subtree_destruction(target.id, root)?
+                    self.plan_subtree_destruction(root)?
                 }
                 ObjectKind::Transform => return Err(RuntimeError::InvalidKind),
             };
@@ -105,42 +94,46 @@ impl Runtime {
                 | PlannedDestruction::Rigidbody(id) => {
                     retirement_ids.push(*id);
                 }
-                PlannedDestruction::Subtree { nodes, .. } => {
+                PlannedDestruction::Subtree { nodes } => {
                     retirement_ids.extend(nodes.iter().map(|node| node.owner));
+                    transforms.extend(nodes.iter().map(|node| node.transform));
                 }
             }
             targets.push(planned);
         }
+        let transforms: Vec<_> = transforms.into_iter().collect();
+        let hierarchy = if transforms.is_empty() {
+            None
+        } else {
+            Some(
+                self.hierarchy
+                    .prepare_removal(&transforms)
+                    .map_err(crate::hierarchy::map_hierarchy_error)?,
+            )
+        };
+
         Ok(DestructionPlan {
             targets,
             retirement_ids,
+            hierarchy,
         })
     }
 
-    fn commit_subtree_destruction(
-        &mut self,
-        _root_owner: ObjectId,
-        root_transform: ObjectId,
-        parent: Option<ObjectId>,
-        nodes: Vec<DestructionNode>,
-    ) {
-        // An earlier overlapping request may already have removed this subtree.
-        if let Some(parent) = parent {
-            if let Some(data) = self.transforms.get_mut(&parent) {
-                data.children.retain(|&child| child != root_transform);
-            }
-        }
+    fn commit_subtree_destruction(&mut self, nodes: Vec<DestructionNode>) {
         for node in nodes {
+            if self.transforms.remove(&node.transform).is_none() {
+                // An overlapping queued subtree may already have retired this node.
+                continue;
+            }
+
             for script in node.scripts {
                 self.remove_script(script);
             }
-            // All hierarchy lookups were validated before this infallible commit begins.
-            drop(self.transforms.remove(&node.transform));
         }
     }
 
-    fn commit_destruction(&mut self, plan: DestructionPlan) {
-        for target in plan.targets {
+    fn commit_destruction(&mut self, targets: Vec<PlannedDestruction>) {
+        for target in targets {
             match target {
                 PlannedDestruction::Script(id) => self.remove_script(id),
                 PlannedDestruction::Plain(id) | PlannedDestruction::Rigidbody(id) => {
@@ -150,12 +143,7 @@ impl Runtime {
                             .expect("validated plain-object retirement");
                     }
                 }
-                PlannedDestruction::Subtree {
-                    root_owner,
-                    root_transform,
-                    parent,
-                    nodes,
-                } => self.commit_subtree_destruction(root_owner, root_transform, parent, nodes),
+                PlannedDestruction::Subtree { nodes } => self.commit_subtree_destruction(nodes),
             }
         }
         self.lifecycle.pending_destroy.clear();
@@ -165,8 +153,18 @@ impl Runtime {
         // Retain every pending request if any validation or traversal fails.
         // No callback runs between this complete plan and its infallible commit.
         let plan = self.plan_destruction()?;
-        self.physics_retire_objects(&plan.retirement_ids)?;
-        self.commit_destruction(plan);
+        let DestructionPlan {
+            targets,
+            retirement_ids,
+            hierarchy,
+        } = plan;
+        self.physics_retire_objects(&retirement_ids)?;
+        if let Some(hierarchy) = hierarchy {
+            self.hierarchy
+                .commit_change(hierarchy)
+                .expect("prepared hierarchy removal remains current during exclusive retirement");
+        }
+        self.commit_destruction(targets);
         Ok(())
     }
 }

@@ -5,24 +5,12 @@ use engine_object::{IdentityExhausted, ObjectId};
 use std::collections::HashMap;
 
 struct PreparedTransformCleanup {
-    parent: Option<(ObjectId, Vec<ObjectId>)>,
     transforms: Vec<ObjectId>,
 }
 
 impl PreparedTransformCleanup {
     fn apply(self, storage: &mut HashMap<ObjectId, TransformData>) {
-        let Self { parent, transforms } = self;
-        for (id, data) in storage.iter_mut() {
-            if let Some((parent_id, original_children)) = parent.as_ref()
-                && parent_id == id
-            {
-                data.children.retain(|child| {
-                    original_children.contains(child) && !transforms.contains(child)
-                });
-            } else {
-                data.children.retain(|child| !transforms.contains(child));
-            }
-        }
+        let Self { transforms } = self;
         storage.retain(|id, _| !transforms.contains(id));
     }
 }
@@ -37,21 +25,30 @@ impl Runtime {
 
     /// Atomically create a GameObject and its mandatory Transform.
     /// # Errors
-    /// Returns [`IdentityExhausted`] without leaving a partial live pair.
+    /// Returns a capacity, identity, or registration error without publishing a partial pair.
     /// The bridge validates the name bound before calling this method.
-    pub fn create_gameobject(&mut self, name: &str) -> Result<ObjectId, IdentityExhausted> {
-        let (owner, transform) = self.objects.create_gameobject(name)?;
+    pub fn create_gameobject(&mut self, name: &str) -> Result<ObjectId, RuntimeError> {
+        let prepared_objects = self.objects.prepare_gameobject(name)?;
+        self.transforms
+            .try_reserve(1)
+            .map_err(|_| RuntimeError::CountOverflow)?;
+        let prepared_root = self
+            .hierarchy
+            .prepare_unowned_root_registration()
+            .map_err(crate::hierarchy::map_hierarchy_error)?;
+        let (owner, transform) = self.objects.create_prepared_gameobject(prepared_objects)?;
+
         self.transforms.insert(
             transform,
             TransformData {
                 owner,
-                parent: None,
-                children: Vec::new(),
                 position: [0.0; 3],
                 rotation: [0.0, 0.0, 0.0, 1.0],
                 scale: [1.0; 3],
             },
         );
+
+        self.hierarchy.commit_registration(prepared_root, transform);
         Ok(owner)
     }
 
@@ -86,26 +83,25 @@ impl Runtime {
             return Err(RuntimeError::Lifecycle);
         }
         let mut pending = vec![root];
-        let parent = self.transform(root)?.parent;
-        let parent_cleanup = parent
-            .map(|parent_id| {
-                let data = self.transform(parent_id)?;
-                Ok::<_, RuntimeError>((parent_id, data.children.clone()))
-            })
-            .transpose()?;
         let mut transforms = Vec::new();
         let mut owners = Vec::new();
         while let Some(transform) = pending.pop() {
             let data = self.transform(transform)?.clone();
-            pending.extend(data.children);
+            pending.extend(self.transform_children(transform)?.iter().copied());
             transforms.push(transform);
             owners.push(data.owner);
         }
-        let cleanup = PreparedTransformCleanup {
-            parent: parent_cleanup,
-            transforms,
-        };
+
+        let prepared_hierarchy = self
+            .hierarchy
+            .prepare_removal(&transforms)
+            .map_err(crate::hierarchy::map_hierarchy_error)?;
+        let cleanup = PreparedTransformCleanup { transforms };
+
         self.physics_retire_objects(&owners)?;
+        self.hierarchy
+            .commit_change(prepared_hierarchy)
+            .map_err(crate::hierarchy::map_hierarchy_error)?;
         cleanup.apply(&mut self.transforms);
         Ok(())
     }

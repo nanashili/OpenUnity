@@ -1154,6 +1154,7 @@ dependencies = [
  "engine-physics-2d",
  "engine-physics-3d",
  "engine-physics-api",
+ "engine-scene",
  "engine-serialization",
 ]
 
@@ -1173,6 +1174,7 @@ name = "engine-scene"
 version = "0.1.0"
 dependencies = [
  "engine-assets",
+ "engine-identifiers",
  "engine-serialization",
  "serde",
  "serde_json",

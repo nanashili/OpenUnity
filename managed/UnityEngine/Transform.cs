@@ -39,6 +39,39 @@ public class Transform : Component
         return index;
     });
 
+    public void SetSiblingIndex(int index)
+    {
+        Context.Invoke(runtime =>
+        {
+            Context.RequireTransformHierarchy();
+
+            int status;
+            try
+            {
+                status = OpenUnityNative.ou_transform_set_sibling_index(runtime, Identity, index);
+            }
+            catch (EntryPointNotFoundException error)
+            {
+                throw new NotSupportedException("OpenUnity Transform hierarchy ABI 1.0 is unavailable.", error);
+            }
+
+            return status switch
+            {
+                0 => 0,
+                -20 => throw new ArgumentOutOfRangeException(
+                    nameof(index), index, "Sibling index must identify an existing child position."),
+                -8 => throw new InvalidOperationException(
+                    "OpenUnity cannot reorder a malformed or mixed-ownership Transform group."),
+                -2 => throw new MissingReferenceException("The OpenUnity Transform has been destroyed."),
+                -11 => throw new NotSupportedException(
+                    "OpenUnity does not support reordering a live unparented Transform."),
+                -17 => throw new InvalidOperationException(
+                    "OpenUnity cannot reorder this Transform while scene staging is active or from a non-owner thread."),
+                _ => throw RuntimeContext.Failure("sibling index assignment", status)
+            };
+        });
+    }
+
     public Transform GetChild(int index)
     {
         long found = Context.Invoke(runtime => OpenUnityNative.ou_transform_child(runtime, Identity, index));

@@ -218,7 +218,10 @@ impl Runtime {
 
     pub(crate) fn validate_root_structure(&self, transform: ObjectId) -> Result<(), RuntimeError> {
         let data = self.transform(transform)?;
-        if data.parent.is_some() || !data.children.is_empty() || data.scale != [1.0; 3] {
+        if self.transform_parent_id(transform)?.is_some()
+            || !self.transform_children(transform)?.is_empty()
+            || data.scale != [1.0; 3]
+        {
             return Err(RuntimeError::PhysicsUnsupported);
         }
         Ok(())

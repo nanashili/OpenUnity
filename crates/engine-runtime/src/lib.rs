@@ -8,6 +8,7 @@ pub const NATIVE_ABI_VERSION: u32 = 0x0001_0000;
 mod context;
 mod error;
 mod hierarchy;
+mod hierarchy_order;
 mod input;
 mod input_api;
 mod lifecycle;

@@ -20,6 +20,11 @@ impl Runtime {
         }
 
         let object_ids = self.scene_release_object_ids(scene)?;
+        let transforms = self.live_scene_transforms(&scene.owners)?;
+        let prepared_hierarchy = self
+            .hierarchy
+            .prepare_scene_release(handle, &transforms)
+            .map_err(crate::hierarchy::map_hierarchy_error)?;
         let released_ids = object_ids.iter().map(|id| id.to_raw()).collect();
         self.scene_release_lifecycle_ready(&released_ids)?;
 
@@ -39,6 +44,9 @@ impl Runtime {
             return Err(error);
         }
 
+        self.hierarchy
+            .commit_change(prepared_hierarchy)
+            .expect("prepared scene graph release remains current during exclusive retirement");
         detached_scene.discard();
         self.scene_release_lifecycle(&released_ids);
         self.transforms

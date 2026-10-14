@@ -2,6 +2,7 @@
 
 use super::{Runtime, RuntimeError, Scene};
 use engine_object::ObjectId;
+use engine_scene::HierarchyTarget;
 use engine_serialization::ScenePlan;
 use std::collections::BTreeMap;
 use std::thread;
@@ -131,10 +132,17 @@ impl UnpublishedGraph {
             self.graph
                 .transform_write(id, 3, &transform.local_scale)
                 .map_err(|_| RuntimeError::InvalidScenePlan)?;
-            // ScenePlan validated all links; install authored child order directly.
-            let data = self.graph.transform_mut(id)?;
-            data.parent = (transform.parent != 0).then(|| self.local[&transform.parent]);
-            data.children = transform.children.iter().map(|id| self.local[id]).collect();
+        }
+
+        for parent in &plan.transforms {
+            let parent_id = self.local[&parent.file_id];
+            for child_file_id in &parent.children {
+                let child_id = self.local[child_file_id];
+                self.graph
+                    .hierarchy
+                    .reparent(child_id, HierarchyTarget::Child(parent_id))
+                    .map_err(crate::hierarchy::map_hierarchy_error)?;
+            }
         }
         Ok(())
     }

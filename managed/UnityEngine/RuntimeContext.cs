@@ -15,6 +15,21 @@ internal sealed class RuntimeContext : SafeHandle
             throw new InvalidOperationException($"OpenUnity Transform ABI 1.0 is required; received 0x{abi:X8}.");
         return true;
     });
+    private static readonly Lazy<bool> TransformHierarchyCapability = new(() =>
+    {
+        try
+        {
+            uint abi = OpenUnityNative.ou_transform_hierarchy_abi_version();
+            if (abi != OpenUnityNative.TransformHierarchyAbiVersion)
+                throw new NotSupportedException(
+                    $"OpenUnity Transform hierarchy ABI 1.0 is required; received 0x{abi:X8}.");
+            return true;
+        }
+        catch (EntryPointNotFoundException error)
+        {
+            throw new NotSupportedException("OpenUnity Transform hierarchy ABI 1.0 is unavailable.", error);
+        }
+    });
     private readonly long runtime;
     private Exception? unusableReason;
     private readonly Lazy<LifecycleDispatcher> lifecycle;
@@ -57,6 +72,8 @@ internal sealed class RuntimeContext : SafeHandle
     }
 
     internal void RequireTransform() => _ = TransformCapability.Value;
+
+    internal void RequireTransformHierarchy() => _ = TransformHierarchyCapability.Value;
 
     internal LifecycleDispatcher Lifecycle => lifecycle.Value;
 

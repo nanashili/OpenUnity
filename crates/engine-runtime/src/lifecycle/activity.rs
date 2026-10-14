@@ -18,7 +18,11 @@ impl Runtime {
             if !self.objects.active_self(data.owner)? {
                 return Ok(false);
             }
-            current = if hierarchy { data.parent } else { None };
+            current = if hierarchy {
+                self.transform_parent_id(transform)?
+            } else {
+                None
+            };
         }
         Ok(true)
     }

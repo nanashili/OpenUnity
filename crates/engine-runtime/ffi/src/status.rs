@@ -44,11 +44,14 @@ pub const STAGING_BUSY: i32 = -17;
 pub const PHYSICS_UNSUPPORTED: i32 = -18;
 /// Invalid query geometry, including inverted bounds or a zero-length ray.
 pub const INVALID_PHYSICS_QUERY: i32 = -19;
+/// Sibling index is outside the direct parent's child range.
+pub const INVALID_SIBLING_INDEX: i32 = -20;
 
 pub(crate) fn runtime_error(error: RuntimeError) -> i32 {
     match error {
         RuntimeError::InvalidObject => INVALID_OBJECT,
         RuntimeError::InvalidKind => INVALID_KIND,
+        RuntimeError::InvalidSiblingIndex => INVALID_SIBLING_INDEX,
         RuntimeError::Numeric => INVALID_NUMERIC,
         RuntimeError::Cycle => HIERARCHY_CYCLE,
         RuntimeError::Unsupported => UNSUPPORTED_TRANSFORM,

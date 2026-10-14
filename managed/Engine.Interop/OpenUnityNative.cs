@@ -10,6 +10,7 @@ internal static partial class OpenUnityNative
     internal const uint AbiVersion = 0x0001_0000;
     internal const uint ObjectNameAbiVersion = 0x0001_0000;
     internal const uint TransformAbiVersion = 0x0001_0000;
+    internal const uint TransformHierarchyAbiVersion = 0x0001_0000;
     internal const uint LifecycleAbiVersion = 0x0001_0000;
     internal const uint SceneAbiVersion = 0x0001_0000;
     internal const uint TimeAbiVersion = 0x0001_0000;
@@ -98,6 +99,12 @@ internal static partial class OpenUnityNative
 
     [DllImport("openunity_engine", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
     internal static extern int ou_transform_set_parent(long runtime, long transform, long parent, int worldPositionStays);
+
+    [DllImport("openunity_engine", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
+    internal static extern uint ou_transform_hierarchy_abi_version();
+
+    [DllImport("openunity_engine", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
+    internal static extern int ou_transform_set_sibling_index(long runtime, long transform, int index);
 
     [DllImport("openunity_engine", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
     internal static extern int ou_transform_point(long runtime, long transform,

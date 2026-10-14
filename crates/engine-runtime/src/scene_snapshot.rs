@@ -139,7 +139,7 @@ impl Runtime {
         let mut current = Some(self.gameobject_transform(owner)?);
         while let Some(transform) = current {
             chain.push(transform);
-            current = self.transform(transform)?.parent;
+            current = self.transform_parent_id(transform)?;
         }
 
         let mut matrix = SnapshotAffine3x4::identity();
@@ -158,7 +158,7 @@ impl Runtime {
             if data.scale != [1.0; 3] {
                 return Ok(false);
             }
-            current = data.parent;
+            current = self.transform_parent_id(transform)?;
         }
         Ok(true)
     }

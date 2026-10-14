@@ -10,6 +10,7 @@ engine-math.workspace = true
 engine-navigation.workspace = true
 engine-serialization.workspace = true
 engine-object.workspace = true
+engine-scene.workspace = true
 engine-physics-api.workspace = true
 engine-input.workspace = true
 engine-identifiers.workspace = true

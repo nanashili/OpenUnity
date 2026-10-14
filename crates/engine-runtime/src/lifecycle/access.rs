@@ -142,7 +142,7 @@ impl Runtime {
             {
                 return Ok(true);
             }
-            pending.extend(data.children.iter().copied());
+            pending.extend(self.transform_children(transform)?.iter().copied());
         }
         Ok(false)
     }
@@ -159,7 +159,7 @@ impl Runtime {
             {
                 return Ok(true);
             }
-            current = data.parent;
+            current = self.transform_parent_id(transform)?;
         }
         Ok(false)
     }

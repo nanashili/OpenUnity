@@ -5,6 +5,7 @@ use crate::{
     math::{self, Quaternion, Vector},
 };
 use engine_object::ObjectId;
+use engine_scene::{HierarchyError, HierarchyTarget, RootOwner};
 
 impl Runtime {
     fn uniform_ancestor_scale(&self, mut current: Option<ObjectId>) -> Result<f64, RuntimeError> {
@@ -21,7 +22,7 @@ impl Runtime {
             if !scale.is_finite() || scale == 0.0 {
                 return Err(RuntimeError::Numeric);
             }
-            current = data.parent;
+            current = self.transform_parent_id(id)?;
         }
         Ok(scale)
     }
@@ -39,6 +40,7 @@ impl Runtime {
             return Err(RuntimeError::InvalidObject);
         }
         let data = self.transform(id)?.clone();
+        let current_parent = self.transform_parent_id(id)?;
         if let Some(parent) = parent {
             self.transform(parent)?;
             self.scene_check_parent(id, parent)?;
@@ -48,9 +50,9 @@ impl Runtime {
             if current == id {
                 return Err(RuntimeError::Cycle);
             }
-            ancestor = self.transform(current)?.parent;
+            ancestor = self.transform_parent_id(current)?;
         }
-        if parent == data.parent {
+        if parent == current_parent {
             return Ok(());
         }
 
@@ -65,21 +67,30 @@ impl Runtime {
             (data.position, data.rotation, data.scale)
         };
 
-        if let Some(old) = data.parent {
-            self.transform_mut(old)?
-                .children
-                .retain(|child| *child != id);
-        }
-        if let Some(parent) = parent {
-            self.transform_mut(parent)?.children.push(id);
-        }
-        self.scene_update_roots(id, data.parent, parent);
+        let target = self.hierarchy_target(id, parent)?;
+        self.hierarchy
+            .reparent(id, target)
+            .map_err(map_hierarchy_error)?;
         let data = self.transform_mut(id)?;
-        data.parent = parent;
         data.position = position;
         data.rotation = rotation;
         data.scale = scale;
         Ok(())
+    }
+
+    fn hierarchy_target(
+        &self,
+        transform: ObjectId,
+        parent: Option<ObjectId>,
+    ) -> Result<HierarchyTarget, RuntimeError> {
+        if let Some(parent) = parent {
+            return Ok(HierarchyTarget::Child(parent));
+        }
+
+        let target = self
+            .scene_hierarchy_owner(transform)
+            .map_or(RootOwner::Unowned, RootOwner::Scene);
+        Ok(HierarchyTarget::Root(target))
     }
 
     fn reparent_local_pose(
@@ -88,7 +99,7 @@ impl Runtime {
         parent: Option<ObjectId>,
         data: &TransformData,
     ) -> Result<(Vector, Quaternion, Vector), RuntimeError> {
-        let old_scale = self.uniform_ancestor_scale(data.parent)?;
+        let old_scale = self.uniform_ancestor_scale(self.transform_parent_id(id)?)?;
         let new_scale = self.uniform_ancestor_scale(parent)?;
         let world_position = self.transform_point(id, [0.0; 3], false)?;
         let world_rotation = self.world_rotation(id)?;
@@ -112,5 +123,17 @@ impl Runtime {
         )?;
 
         Ok((position, rotation, scale))
+    }
+}
+
+pub(crate) fn map_hierarchy_error(error: HierarchyError) -> RuntimeError {
+    match error {
+        HierarchyError::MissingNode | HierarchyError::DuplicateNode => RuntimeError::InvalidKind,
+        HierarchyError::MalformedTopology => RuntimeError::InvalidKind,
+        HierarchyError::Cycle => RuntimeError::Cycle,
+        HierarchyError::RootReorderingUnsupported => RuntimeError::Unsupported,
+        HierarchyError::InvalidSiblingIndex { .. } => RuntimeError::InvalidSiblingIndex,
+        HierarchyError::Allocation => RuntimeError::CountOverflow,
+        HierarchyError::StalePreparation => RuntimeError::InvalidKind,
     }
 }

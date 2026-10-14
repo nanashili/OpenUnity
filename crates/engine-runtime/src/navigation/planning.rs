@@ -54,7 +54,7 @@ pub(super) fn navigation_agent_transform(
     if transform.owner != agent {
         return Err(RuntimeError::InvalidObject.into());
     }
-    if transform.parent.is_some() {
+    if runtime.transform_parent_id(transform_id)?.is_some() {
         return Err(RuntimeNavigationError::ParentTransformUnsupported);
     }
     if runtime.physics_has_attachment_for_owner(agent) {

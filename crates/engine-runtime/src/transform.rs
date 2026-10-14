@@ -33,27 +33,50 @@ impl Runtime {
     /// # Errors
     /// Returns an object or kind error.
     pub fn transform_parent(&self, id: ObjectId) -> Result<Option<ObjectId>, RuntimeError> {
-        Ok(self.transform(id)?.parent)
+        self.transform(id)?;
+        Ok(self.hierarchy.parent_of(id))
     }
     /// Return the number of ordered children.
     /// # Errors
     /// Returns an object, kind, or count overflow error.
     pub fn transform_child_count(&self, id: ObjectId) -> Result<i32, RuntimeError> {
-        i32::try_from(self.transform(id)?.children.len()).map_err(|_| RuntimeError::CountOverflow)
+        self.transform(id)?;
+        let count = self
+            .hierarchy
+            .children(id)
+            .ok_or(RuntimeError::InvalidKind)?
+            .len();
+        i32::try_from(count).map_err(|_| RuntimeError::CountOverflow)
     }
     /// Return an ordered child identity.
     /// # Errors
     /// Returns an object, kind, or index error.
     pub fn transform_child(&self, id: ObjectId, index: i32) -> Result<ObjectId, RuntimeError> {
-        let data = self.transform(id)?;
+        self.transform(id)?;
         usize::try_from(index)
             .ok()
-            .and_then(|index| data.children.get(index).copied())
+            .and_then(|index| self.hierarchy.children(id)?.get(index).copied())
             .ok_or(RuntimeError::InvalidKind)
+    }
+
+    pub(crate) fn transform_parent_id(
+        &self,
+        id: ObjectId,
+    ) -> Result<Option<ObjectId>, RuntimeError> {
+        self.transform(id)?;
+        self.hierarchy
+            .contains(id)
+            .then(|| self.hierarchy.parent_of(id))
+            .ok_or(RuntimeError::InvalidKind)
+    }
+
+    pub(crate) fn transform_children(&self, id: ObjectId) -> Result<&[ObjectId], RuntimeError> {
+        self.transform(id)?;
+        self.hierarchy.children(id).ok_or(RuntimeError::InvalidKind)
     }
     pub(crate) fn world_rotation(&self, id: ObjectId) -> Result<Quaternion, RuntimeError> {
         let data = self.transform(id)?;
-        if data.parent.is_none() {
+        if self.transform_parent_id(id)?.is_none() {
             return Ok(data.rotation);
         }
 
@@ -62,7 +85,7 @@ impl Runtime {
         while let Some(id) = current {
             let data = self.transform(id)?;
             result = math::multiply(data.rotation, result)?;
-            current = data.parent;
+            current = self.transform_parent_id(id)?;
         }
         Ok(result)
     }
@@ -81,9 +104,8 @@ impl Runtime {
             let mut chain = Vec::new();
             let mut current = Some(id);
             while let Some(id) = current {
-                let data = self.transform(id)?;
                 chain.push(id);
-                current = data.parent;
+                current = self.transform_parent_id(id)?;
             }
             for id in chain.into_iter().rev() {
                 let data = self.transform(id)?;
@@ -103,7 +125,7 @@ impl Runtime {
                     data.position,
                     math::rotate(data.rotation, math::scale(point, data.scale)?)?,
                 )?;
-                current = data.parent;
+                current = self.transform_parent_id(id)?;
             }
         }
         Ok(point)
@@ -131,9 +153,9 @@ impl Runtime {
         property: i32,
         values: &[f32],
     ) -> Result<(), RuntimeError> {
-        let data = self.transform(id)?;
+        self.transform(id)?;
         math::finite(values)?;
-        let parent = data.parent;
+        let parent = self.transform_parent_id(id)?;
         match property {
             1 | 3 | 4 => {
                 let value: Vector = values.try_into().map_err(|_| RuntimeError::InvalidKind)?;

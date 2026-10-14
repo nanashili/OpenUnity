@@ -6,6 +6,7 @@ rust-version.workspace = true
 publish.workspace = true
 
 [dependencies]
+engine-identifiers.workspace = true
 engine-assets.workspace = true
 engine-serialization.workspace = true
 serde.workspace = true

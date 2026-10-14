@@ -3,8 +3,77 @@
 use super::state::DestroyTarget;
 use crate::{ObjectKind, Runtime, RuntimeError};
 use engine_object::ObjectId;
+use std::collections::HashSet;
+
+pub(crate) struct PreparedSceneDestroyRequests {
+    targets: Vec<ObjectId>,
+    scripts: Vec<ObjectId>,
+}
 
 impl Runtime {
+    pub(crate) fn prepare_scene_destroy_requests(
+        &mut self,
+        owners: &[ObjectId],
+    ) -> Result<PreparedSceneDestroyRequests, RuntimeError> {
+        let mut targets = Vec::new();
+        let mut scripts = HashSet::new();
+
+        for &owner in owners {
+            if !self.is_alive(owner) {
+                continue;
+            }
+            if self.objects.kind(owner)? != ObjectKind::GameObject {
+                return Err(RuntimeError::InvalidKind);
+            }
+
+            if !self
+                .lifecycle
+                .pending_destroy
+                .iter()
+                .any(|target| target.id == owner)
+            {
+                targets.push(owner);
+            }
+
+            scripts.extend(self.owner_scripts(owner)?.iter().copied());
+        }
+
+        for &script in &scripts {
+            if !self.lifecycle.scripts.contains_key(&script.to_raw()) {
+                return Err(RuntimeError::InvalidObject);
+            }
+        }
+
+        self.lifecycle
+            .pending_destroy
+            .try_reserve(targets.len())
+            .map_err(|_| RuntimeError::CountOverflow)?;
+
+        Ok(PreparedSceneDestroyRequests {
+            targets,
+            scripts: scripts.into_iter().collect(),
+        })
+    }
+
+    pub(crate) fn commit_scene_destroy_requests(&mut self, prepared: PreparedSceneDestroyRequests) {
+        for script in prepared.scripts {
+            let state = self
+                .lifecycle
+                .scripts
+                .get_mut(&script.to_raw())
+                .expect("scene destruction scripts remain live through commit");
+            state.pending_destroy = true;
+            state.enabled = false;
+        }
+
+        self.lifecycle
+            .pending_destroy
+            .extend(prepared.targets.into_iter().map(|id| DestroyTarget {
+                id,
+                prepared: false,
+            }));
+    }
+
     pub(crate) fn physics_destruction_requested(&self, id: ObjectId) -> Result<bool, RuntimeError> {
         if self.lifecycle_pending_owner(id) {
             return Ok(true);
@@ -41,7 +110,7 @@ impl Runtime {
                 while let Some(transform) = pending.pop() {
                     let data = self.transform(transform)?;
                     scripts.extend(self.owner_scripts(data.owner)?.iter().copied());
-                    pending.extend(data.children.iter().copied());
+                    pending.extend(self.transform_children(transform)?.iter().copied());
                 }
             }
             ObjectKind::Plain => {}
