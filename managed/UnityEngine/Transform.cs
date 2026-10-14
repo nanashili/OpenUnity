@@ -125,6 +125,29 @@ public partial class Transform : Component
         });
     }
 
+    public Vector3 TransformVector(Vector3 vector) => ConvertVector(vector, inverse: false);
+
+    public Vector3 InverseTransformVector(Vector3 vector) => ConvertVector(vector, inverse: true);
+
+    private Vector3 ConvertVector(Vector3 vector, bool inverse)
+    {
+        Context.RequireTransformVector();
+        return Context.Invoke(runtime =>
+        {
+            float[] input = [vector.x, vector.y, vector.z];
+            float[] output = new float[3];
+            int status = OpenUnityNative.ou_transform_vector(
+                runtime,
+                Identity,
+                input,
+                output,
+                output.Length,
+                inverse ? 1 : 0);
+            CheckNative(status, "vector conversion");
+            return new Vector3(output[0], output[1], output[2]);
+        });
+    }
+
     private static void Validate(float[] values)
     {
         foreach (float value in values)

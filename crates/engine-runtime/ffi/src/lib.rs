@@ -22,6 +22,7 @@ mod timing;
 mod transform_direction;
 mod transform_hierarchy;
 mod transform_pose;
+mod transform_vector;
 
 pub use abi::{
     ABI_VERSION, OBJECT_NAME_ABI_VERSION, TRANSFORM_ABI_VERSION, ou_abi_version,
@@ -87,3 +88,6 @@ pub use transform_hierarchy::{
     ou_transform_set_parent, ou_transform_set_sibling_index,
 };
 pub use transform_pose::{ou_transform_point, ou_transform_read, ou_transform_write};
+pub use transform_vector::{
+    TRANSFORM_VECTOR_ABI_VERSION, ou_transform_vector, ou_transform_vector_abi_version,
+};

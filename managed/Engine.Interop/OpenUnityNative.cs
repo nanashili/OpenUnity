@@ -11,6 +11,7 @@ internal static partial class OpenUnityNative
     internal const uint ObjectNameAbiVersion = 0x0001_0000;
     internal const uint TransformAbiVersion = 0x0001_0000;
     internal const uint TransformDirectionAbiVersion = 0x0001_0000;
+    internal const uint TransformVectorAbiVersion = 0x0001_0000;
     internal const uint TransformHierarchyAbiVersion = 0x0001_0000;
     internal const uint LifecycleAbiVersion = 0x0002_0000;
     internal const uint SceneAbiVersion = 0x0001_0000;
@@ -122,6 +123,14 @@ internal static partial class OpenUnityNative
 
     [DllImport("openunity_engine", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
     internal static extern uint ou_transform_direction_abi_version();
+
+    [DllImport("openunity_engine", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
+    internal static extern int ou_transform_vector(long runtime, long transform,
+        [In, MarshalAs(UnmanagedType.LPArray, SizeParamIndex = 4)] float[] input,
+        [Out, MarshalAs(UnmanagedType.LPArray, SizeParamIndex = 4)] float[] output, int count, int inverse);
+
+    [DllImport("openunity_engine", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
+    internal static extern uint ou_transform_vector_abi_version();
 
     [DllImport("openunity_engine", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
     internal static extern uint ou_lifecycle_abi_version();
