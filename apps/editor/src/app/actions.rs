@@ -73,6 +73,9 @@ impl EditorApp {
             EditorAction::DeleteSelection => {
                 self.delete_authoring_selection()?;
             }
+            EditorAction::CreateParentForSelection => {
+                self.create_parent_for_selection()?;
+            }
             EditorAction::Edit {
                 id,
                 name,
@@ -138,6 +141,26 @@ impl EditorApp {
                 Ok(())
             })
             .map_err(|e| e.to_string())?;
+        Ok(())
+    }
+
+    fn create_parent_for_selection(&mut self) -> Result<(), String> {
+        let selected_ids: Vec<_> = self.document.selection().ids().collect();
+        let mut new_parent = None;
+
+        self.document
+            .edit("Create parent for selection", |scene| {
+                new_parent = Some(scene.create_parent_for_siblings(&selected_ids, "New Parent")?);
+                Ok(())
+            })
+            .map_err(|error| error.to_string())?;
+
+        let new_parent = new_parent.ok_or("Parent creation completed without an entity.")?;
+        let (scene, selection) = self.document.selection_mut();
+        selection
+            .replace(Some(new_parent), scene)
+            .map_err(|error| error.to_string())?;
+
         Ok(())
     }
 }

@@ -16,7 +16,7 @@ pub fn show(ui: &mut Ui, scene: &Scene, selection: &Selection) -> Vec<EditorActi
     let primary = selection.primary().filter(|id| scene.get(*id).is_some());
     let selected: BTreeSet<_> = selection.ids().collect();
 
-    creation_controls(ui, scene, primary, &selected, &mut actions);
+    creation_controls(ui, scene, primary, selection, &selected, &mut actions);
     parent_control(ui, scene, primary, &mut actions);
     forest(ui, scene, &selected, &mut actions);
     actions
@@ -26,6 +26,7 @@ fn creation_controls(
     ui: &mut Ui,
     scene: &Scene,
     primary: Option<EntityId>,
+    selection: &Selection,
     selected: &BTreeSet<EntityId>,
     actions: &mut Vec<EditorAction>,
 ) {
@@ -50,6 +51,16 @@ fn creation_controls(
             .clicked()
         {
             actions.push(EditorAction::DeleteSelection);
+        }
+        if ui
+            .add_enabled(
+                super::selection::can_group_selection(scene, selection),
+                eframe::egui::Button::new("Create parent"),
+            )
+            .on_hover_text("Group the selected siblings under a new empty parent")
+            .clicked()
+        {
+            actions.push(EditorAction::CreateParentForSelection);
         }
     });
     ui.small("Rename the selected entity in Inspector.");

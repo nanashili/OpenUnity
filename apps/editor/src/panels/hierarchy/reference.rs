@@ -18,7 +18,7 @@ pub fn show_reference(
 ) -> Vec<EditorAction> {
     let mut actions = Vec::new();
     let primary = selection.primary().filter(|id| scene.get(*id).is_some());
-    toolbar(ui, scene, primary, browser, &mut actions);
+    toolbar(ui, scene, primary, selection, browser, &mut actions);
     let revision = scene.hierarchy_revision();
     if let Err(error) = browser.refresh(revision, || forest_rows(scene)) {
         ui.colored_label(
@@ -50,6 +50,7 @@ fn toolbar(
     ui: &mut Ui,
     scene: &Scene,
     primary: Option<EntityId>,
+    selection: &Selection,
     browser: &mut HierarchyBrowser,
     actions: &mut Vec<EditorAction>,
 ) {
@@ -76,6 +77,16 @@ fn toolbar(
                 .clicked()
             {
                 actions.push(EditorAction::DeleteSelection);
+                ui.close();
+            }
+            if ui
+                .add_enabled(
+                    super::selection::can_group_selection(scene, selection),
+                    eframe::egui::Button::new("Create empty parent"),
+                )
+                .clicked()
+            {
+                actions.push(EditorAction::CreateParentForSelection);
                 ui.close();
             }
             if let Some(entity) = primary.and_then(|id| scene.get(id)) {

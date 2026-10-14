@@ -7,6 +7,7 @@ use crate::hierarchy_revision::HierarchyRevision;
 use super::{Entity, EntityId, MAX_ENTITIES, MAX_NAME_BYTES, SceneError};
 
 mod edits;
+mod grouping;
 mod sibling_order;
 mod validation;
 

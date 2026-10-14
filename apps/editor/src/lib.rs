@@ -36,6 +36,8 @@ pub enum EditorAction {
     },
     /// Remove the selected subtree(s).
     DeleteSelection,
+    /// Create an identity-transform parent around the selected direct siblings.
+    CreateParentForSelection,
     /// Apply one complete inspector transaction.
     Edit {
         /// Live document identity.

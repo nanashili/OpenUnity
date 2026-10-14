@@ -2,6 +2,7 @@
 
 mod authoring;
 mod reference;
+mod selection;
 
 pub use authoring::show;
 pub use reference::show_reference;
