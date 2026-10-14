@@ -26,6 +26,32 @@ public class Transform : Component
         set => SetParent(value, true);
     }
 
+    public Transform root
+    {
+        get
+        {
+            Transform current = this;
+            while (current.parent is Transform ancestor)
+                current = ancestor;
+            return current;
+        }
+    }
+
+    public bool IsChildOf(Transform parent)
+    {
+        ArgumentNullException.ThrowIfNull(parent);
+
+        Transform? current = this;
+        while (current is not null)
+        {
+            if (ReferenceEquals(current, parent))
+                return true;
+            current = current.parent;
+        }
+
+        return false;
+    }
+
     public int childCount => Context.Invoke(runtime =>
     {
         int count = OpenUnityNative.ou_transform_child_count(runtime, Identity);
