@@ -54,6 +54,13 @@ pub enum EditorAction {
         /// Proposed parent, or a root.
         parent: Option<EntityId>,
     },
+    /// Move one child within its current direct-child group.
+    SetSiblingIndex {
+        /// Live document identity.
+        id: EntityId,
+        /// Destination index in the entity's current sibling group.
+        sibling_index: usize,
+    },
 }
 
 pub mod app;

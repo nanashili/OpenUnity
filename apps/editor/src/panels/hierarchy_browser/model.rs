@@ -8,6 +8,12 @@ pub(crate) struct Row {
     pub name: String,
     pub depth: usize,
     pub active: bool,
+    pub sibling_position: Option<(usize, usize)>,
+}
+
+pub(crate) enum BrowserAction {
+    Select(EntityId, bool),
+    SetSiblingIndex(EntityId, usize),
 }
 
 pub(super) struct CachedRow {
@@ -17,6 +23,7 @@ pub(super) struct CachedRow {
     pub(super) depth: usize,
     pub(super) active: bool,
     pub(super) has_children: bool,
+    pub(super) sibling_position: Option<(usize, usize)>,
 }
 
 pub(super) struct CachedForest {
@@ -150,6 +157,7 @@ fn cache_rows(rows: Vec<Row>, has_children: &[bool]) -> Vec<CachedRow> {
             depth: row.depth,
             active: row.active,
             has_children: has_children[index],
+            sibling_position: row.sibling_position,
         })
         .collect()
 }

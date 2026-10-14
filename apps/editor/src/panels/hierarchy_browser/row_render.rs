@@ -1,14 +1,14 @@
 use crate::appearance;
 use eframe::egui::{self, Response, Ui};
 
-use super::{CachedRow, snapshot::RowGeometry};
+use super::{BrowserAction, CachedRow, sibling_controls, snapshot::RowGeometry};
 
 const DISCLOSURE_RESERVATION: f32 = 12.0;
 
 pub(super) struct RowRender {
     pub(super) geometry: RowGeometry,
     pub(super) control: serde_json::Value,
-    pub(super) action: Option<(openunity_editor_core::scene::EntityId, bool)>,
+    pub(super) action: Option<BrowserAction>,
     pub(super) branch_toggle: Option<usize>,
 }
 
@@ -37,9 +37,10 @@ pub(super) fn render_row(
     let layout = allocate_row(ui, row, selected, has_children);
     let branch_toggle = show_disclosure(ui, row_index, &layout, expanded);
     let content = paint_row_content(ui, row, &layout);
+    let sibling_action = sibling_controls::render(ui, row, layout.rect);
     let geometry = package_row_geometry(row_index, &layout.response, &layout, content);
     let response = attach_row_tooltip(layout.response, row);
-    let action = row_action(&response, row, branch_toggle.is_some());
+    let action = sibling_action.or_else(|| row_action(&response, row, branch_toggle.is_some()));
     let control = appearance::control(
         format!("hierarchy.entity.{}", row.id.0),
         &response,
@@ -188,7 +189,7 @@ fn row_action(
     response: &Response,
     row: &CachedRow,
     disclosure_clicked: bool,
-) -> Option<(openunity_editor_core::scene::EntityId, bool)> {
+) -> Option<BrowserAction> {
     if !response.clicked() || disclosure_clicked {
         return None;
     }
@@ -196,7 +197,7 @@ fn row_action(
     let toggle_selection = response
         .ctx
         .input(|input| input.modifiers.command || input.modifiers.ctrl);
-    Some((row.id, toggle_selection))
+    Some(BrowserAction::Select(row.id, toggle_selection))
 }
 
 fn package_row_geometry(

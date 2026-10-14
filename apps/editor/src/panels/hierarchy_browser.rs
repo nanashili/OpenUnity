@@ -4,6 +4,7 @@ mod model;
 mod projection;
 mod row_render;
 mod search;
+mod sibling_controls;
 mod snapshot;
 mod tree;
 
@@ -11,7 +12,7 @@ use eframe::egui;
 use openunity_editor_core::{hierarchy::HierarchyRevision, scene::EntityId};
 use std::collections::HashSet;
 
-pub(crate) use model::Row;
+pub(crate) use model::{BrowserAction, Row};
 use model::{CachedForest, CachedRow};
 
 /// Search state and the current in-memory hierarchy projection.

@@ -7,6 +7,7 @@ use crate::hierarchy_revision::HierarchyRevision;
 use super::{Entity, EntityId, MAX_ENTITIES, MAX_NAME_BYTES, SceneError};
 
 mod edits;
+mod sibling_order;
 mod validation;
 
 #[cfg(test)]
@@ -21,13 +22,17 @@ mod tests;
 pub struct Scene {
     name: String,
     entities: BTreeMap<EntityId, Entity>,
+    sibling_groups: BTreeMap<Option<EntityId>, Vec<EntityId>>,
     next_id: u64,
     hierarchy_revision: HierarchyRevision,
 }
 
 impl PartialEq for Scene {
     fn eq(&self, other: &Self) -> bool {
-        self.name == other.name && self.entities == other.entities && self.next_id == other.next_id
+        self.name == other.name
+            && self.entities == other.entities
+            && self.sibling_groups == other.sibling_groups
+            && self.next_id == other.next_id
     }
 }
 
@@ -39,6 +44,7 @@ impl Scene {
         Ok(Self {
             name,
             entities: BTreeMap::new(),
+            sibling_groups: BTreeMap::from([(None, Vec::new())]),
             next_id: 1,
             hierarchy_revision: HierarchyRevision::fresh(),
         })
@@ -59,6 +65,7 @@ impl Scene {
             name: name.into(),
             next_id,
             entities: BTreeMap::new(),
+            sibling_groups: BTreeMap::new(),
             hierarchy_revision: HierarchyRevision::fresh(),
         };
         for entity in entities {
@@ -70,6 +77,7 @@ impl Scene {
                 ));
             }
         }
+        scene.initialize_sibling_groups();
         scene.validate_for(operation)?;
         Ok(scene)
     }
@@ -103,6 +111,23 @@ impl Scene {
         self.entities.get(&id)
     }
 
+    /// Return the ordered identities in one sibling group.
+    pub fn sibling_group(&self, parent: Option<EntityId>) -> Option<&[EntityId]> {
+        if parent.is_some_and(|id| !self.entities.contains_key(&id)) {
+            return None;
+        }
+        self.sibling_groups.get(&parent).map(Vec::as_slice)
+    }
+
+    /// Return an entity's index within its root or direct-child group.
+    pub fn sibling_index(&self, id: EntityId) -> Option<usize> {
+        let entity = self.get(id)?;
+        self.sibling_groups
+            .get(&entity.parent)?
+            .iter()
+            .position(|candidate| *candidate == id)
+    }
+
     /// Validate names, identities, finite transforms and the entire forest.
     pub fn validate(&self) -> Result<(), SceneError> {
         self.validate_for("validate scene")
@@ -124,6 +149,18 @@ impl Scene {
         }
         self.next_id = self.next_id.max(minimum);
         Ok(())
+    }
+
+    fn initialize_sibling_groups(&mut self) {
+        self.sibling_groups.clear();
+        self.sibling_groups.insert(None, Vec::new());
+        for entity in self.entities.values() {
+            self.sibling_groups
+                .entry(entity.parent)
+                .or_default()
+                .push(entity.id);
+            self.sibling_groups.entry(Some(entity.id)).or_default();
+        }
     }
 }
 

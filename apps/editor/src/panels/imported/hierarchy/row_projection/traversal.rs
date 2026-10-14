@@ -51,6 +51,7 @@ pub(super) fn preorder_rows(
             name: game_object.name.clone(),
             depth: pending_row.depth,
             active: game_object.active,
+            sibling_position: None,
         });
 
         push_children(

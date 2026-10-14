@@ -3,10 +3,10 @@
 use std::collections::BTreeMap;
 
 use eframe::egui::{ComboBox, Ui};
-use openunity_editor_core::scene::{Entity, EntityId, MAX_HIERARCHY_DEPTH, Primitive, Scene};
+use openunity_editor_core::scene::{EntityId, MAX_HIERARCHY_DEPTH, Primitive, Scene};
 use openunity_editor_core::selection::Selection;
 
-use super::super::hierarchy_browser::{HierarchyBrowser, Row};
+use super::super::hierarchy_browser::{BrowserAction, HierarchyBrowser, Row};
 use crate::EditorAction;
 
 /// Compact reference presentation over the same actual forest and actions.
@@ -32,7 +32,12 @@ pub fn show_reference(
         browser
             .tree(ui, scene.name(), selection.ids())
             .into_iter()
-            .map(|(id, toggle)| EditorAction::Select { id, toggle }),
+            .map(|action| match action {
+                BrowserAction::Select(id, toggle) => EditorAction::Select { id, toggle },
+                BrowserAction::SetSiblingIndex(id, sibling_index) => {
+                    EditorAction::SetSiblingIndex { id, sibling_index }
+                }
+            }),
     );
     actions
 }
@@ -93,32 +98,44 @@ fn toolbar(
 
 fn forest_rows(scene: &Scene) -> Result<Vec<Row>, String> {
     let expected_row_count = scene.entities().len();
-    let mut children: BTreeMap<Option<EntityId>, Vec<&Entity>> = BTreeMap::new();
-    for entity in scene.entities() {
-        children.entry(entity.parent).or_default().push(entity);
-    }
+    let entities: BTreeMap<_, _> = scene.entities().map(|entity| (entity.id, entity)).collect();
     let mut pending = Vec::new();
-    if let Some(roots) = children.get(&None) {
-        pending.extend(roots.iter().rev().map(|e| (*e, 0)));
+    if let Some(roots) = scene.sibling_group(None) {
+        pending.extend(roots.iter().rev().map(|id| (*id, 0, None)));
     }
     let mut rows = Vec::new();
-    while let Some((entity, depth)) = pending.pop() {
+    while let Some((id, depth, sibling_position)) = pending.pop() {
+        let entity = entities
+            .get(&id)
+            .copied()
+            .ok_or_else(|| format!("Hierarchy group references missing entity {}.", id.0))?;
         rows.push(Row {
             id: entity.id,
             parent: entity.parent,
             name: entity.name.clone(),
             depth,
             active: entity.active,
+            sibling_position,
         });
 
-        if let Some(descendants) = children.get(&Some(entity.id)) {
+        if let Some(descendants) = scene
+            .sibling_group(Some(entity.id))
+            .filter(|descendants| !descendants.is_empty())
+        {
             let child_depth = depth
                 .checked_add(1)
                 .ok_or_else(|| "Native hierarchy depth overflow.".to_owned())?;
             if child_depth >= MAX_HIERARCHY_DEPTH {
                 return Err("Native hierarchy exceeds its validated depth limit.".to_owned());
             }
-            pending.extend(descendants.iter().rev().map(|e| (*e, child_depth)));
+            let sibling_count = descendants.len();
+            pending.extend(
+                descendants
+                    .iter()
+                    .enumerate()
+                    .rev()
+                    .map(|(index, id)| (*id, child_depth, Some((index, sibling_count)))),
+            );
         }
     }
 

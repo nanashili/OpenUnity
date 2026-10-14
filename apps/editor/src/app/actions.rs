@@ -96,6 +96,13 @@ impl EditorApp {
                     })
                     .map_err(|e| e.to_string())?;
             }
+            EditorAction::SetSiblingIndex { id, sibling_index } => {
+                self.document
+                    .edit("Reorder sibling", |scene| {
+                        scene.set_sibling_index(id, sibling_index).map(|_| ())
+                    })
+                    .map_err(|e| e.to_string())?;
+            }
         }
         Ok(())
     }

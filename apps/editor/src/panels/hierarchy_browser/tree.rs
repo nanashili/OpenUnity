@@ -3,7 +3,7 @@ use eframe::egui::{self, Ui};
 use openunity_editor_core::scene::EntityId;
 
 use super::snapshot::MAX_RENDERED_GEOMETRY;
-use super::{HierarchyBrowser, row_render};
+use super::{BrowserAction, HierarchyBrowser, row_render};
 
 impl HierarchyBrowser {
     pub(crate) fn tree(
@@ -11,7 +11,7 @@ impl HierarchyBrowser {
         ui: &mut Ui,
         scene_name: &str,
         selected: impl IntoIterator<Item = EntityId>,
-    ) -> Vec<(EntityId, bool)> {
+    ) -> Vec<BrowserAction> {
         self.update_selected_ids(selected);
 
         draw_column_header(ui);
@@ -79,7 +79,7 @@ impl HierarchyBrowser {
         &mut self,
         ui: &mut Ui,
         row_height: f32,
-        actions: &mut Vec<(EntityId, bool)>,
+        actions: &mut Vec<BrowserAction>,
         branch_toggles: &mut Vec<usize>,
     ) {
         let Some(source) = &self.source else {

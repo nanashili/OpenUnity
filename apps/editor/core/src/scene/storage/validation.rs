@@ -1,12 +1,17 @@
 //! Ordered scene, entity, and iterative forest validation.
 
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 
 use super::super::{MAX_ENTITIES, MAX_HIERARCHY_DEPTH, SceneError};
 use super::{Scene, validate_name};
 
 impl Scene {
     pub(super) fn validate_for(&self, operation: &'static str) -> Result<(), SceneError> {
+        self.validate_topology(operation)?;
+        self.validate_sibling_groups(operation)
+    }
+
+    pub(super) fn validate_topology(&self, operation: &'static str) -> Result<(), SceneError> {
         validate_name(&self.name, operation)?;
         if self.entities.len() > MAX_ENTITIES {
             return Err(SceneError::new(operation, "entity limit exceeded"));
@@ -19,6 +24,39 @@ impl Scene {
         }
         self.validate_entities(operation)?;
         self.validate_forest(operation)
+    }
+
+    fn validate_sibling_groups(&self, operation: &'static str) -> Result<(), SceneError> {
+        let mut expected_parents = BTreeSet::from([None]);
+        expected_parents.extend(self.entities.keys().copied().map(Some));
+        if self.sibling_groups.keys().copied().collect::<BTreeSet<_>>() != expected_parents {
+            return Err(SceneError::new(
+                operation,
+                "sibling groups do not match the scene entities",
+            ));
+        }
+
+        let mut members = BTreeSet::new();
+        for (parent, siblings) in &self.sibling_groups {
+            for sibling in siblings {
+                let entity = self.entities.get(sibling).ok_or_else(|| {
+                    SceneError::new(operation, "sibling group contains a missing entity")
+                })?;
+                if entity.parent != *parent || !members.insert(*sibling) {
+                    return Err(SceneError::new(
+                        operation,
+                        "sibling group membership is inconsistent",
+                    ));
+                }
+            }
+        }
+        if members.len() != self.entities.len() {
+            return Err(SceneError::new(
+                operation,
+                "an entity is missing from its sibling group",
+            ));
+        }
+        Ok(())
     }
 
     fn validate_entities(&self, operation: &'static str) -> Result<(), SceneError> {

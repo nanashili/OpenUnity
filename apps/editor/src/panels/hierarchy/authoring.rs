@@ -3,7 +3,7 @@
 use std::collections::{BTreeMap, BTreeSet};
 
 use eframe::egui::{ComboBox, ScrollArea, Ui};
-use openunity_editor_core::scene::{Entity, EntityId, MAX_HIERARCHY_DEPTH, Primitive, Scene};
+use openunity_editor_core::scene::{EntityId, MAX_HIERARCHY_DEPTH, Primitive, Scene};
 use openunity_editor_core::selection::Selection;
 
 use crate::EditorAction;
@@ -98,12 +98,7 @@ fn forest(
     selected: &BTreeSet<EntityId>,
     actions: &mut Vec<EditorAction>,
 ) {
-    // Index once: scanning the full document for every row is quadratic.
-    // Scene validation guarantees an acyclic forest with bounded depth.
-    let mut children: BTreeMap<Option<EntityId>, Vec<&Entity>> = BTreeMap::new();
-    for entity in scene.entities() {
-        children.entry(entity.parent).or_default().push(entity);
-    }
+    let entities: BTreeMap<_, _> = scene.entities().map(|entity| (entity.id, entity)).collect();
     ScrollArea::both()
         .id_salt("hierarchy_forest")
         .show(ui, |ui| {
@@ -111,10 +106,13 @@ fn forest(
                 ui.label("Scene is empty. Add an entity to begin.");
             }
             let mut pending = Vec::new();
-            if let Some(roots) = children.get(&None) {
-                pending.extend(roots.iter().rev().map(|entity| (*entity, 0)));
+            if let Some(roots) = scene.sibling_group(None) {
+                pending.extend(roots.iter().rev().map(|id| (*id, 0, None)));
             }
-            while let Some((entity, depth)) = pending.pop() {
+            while let Some((id, depth, sibling_position)) = pending.pop() {
+                let Some(entity) = entities.get(&id).copied() else {
+                    continue;
+                };
                 ui.push_id(entity.id.0, |ui| {
                     ui.horizontal(|ui| {
                         ui.add_space(depth as f32 * 14.0);
@@ -131,13 +129,56 @@ fn forest(
                                 toggle,
                             });
                         }
+                        sibling_controls(ui, entity.id, sibling_position, actions);
                     });
                 });
                 if depth + 1 < MAX_HIERARCHY_DEPTH
-                    && let Some(descendants) = children.get(&Some(entity.id))
+                    && let Some(descendants) = scene.sibling_group(Some(entity.id))
                 {
-                    pending.extend(descendants.iter().rev().map(|child| (*child, depth + 1)));
+                    let sibling_count = descendants.len();
+                    pending.extend(
+                        descendants.iter().enumerate().rev().map(|(index, child)| {
+                            (*child, depth + 1, Some((index, sibling_count)))
+                        }),
+                    );
                 }
             }
         });
+}
+
+fn sibling_controls(
+    ui: &mut Ui,
+    id: EntityId,
+    sibling_position: Option<(usize, usize)>,
+    actions: &mut Vec<EditorAction>,
+) {
+    let Some((sibling_index, sibling_count)) = sibling_position else {
+        return;
+    };
+    if sibling_count < 2 {
+        return;
+    }
+
+    if sibling_index > 0
+        && ui
+            .small_button("↟")
+            .on_hover_text("Set as first sibling")
+            .clicked()
+    {
+        actions.push(EditorAction::SetSiblingIndex {
+            id,
+            sibling_index: 0,
+        });
+    }
+    if sibling_index + 1 < sibling_count
+        && ui
+            .small_button("↡")
+            .on_hover_text("Set as last sibling")
+            .clicked()
+    {
+        actions.push(EditorAction::SetSiblingIndex {
+            id,
+            sibling_index: sibling_count - 1,
+        });
+    }
 }

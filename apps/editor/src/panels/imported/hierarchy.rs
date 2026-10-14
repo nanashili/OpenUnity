@@ -5,7 +5,7 @@ mod row_projection;
 use eframe::egui::{self, Ui};
 use openunity_editor_core::imported_scene::ImportedDocument;
 
-use super::super::hierarchy_browser::HierarchyBrowser;
+use super::super::hierarchy_browser::{BrowserAction, HierarchyBrowser};
 use super::{ImportedAction, actions::selection_toggle};
 
 /// Compact tree; structural controls remain unsupported for imported documents.
@@ -37,9 +37,12 @@ pub fn show_hierarchy_reference(
             document.selection().iter().copied(),
         )
         .into_iter()
-        .map(|(id, toggle)| ImportedAction::Select {
-            id: Some(id),
-            toggle,
+        .filter_map(|action| match action {
+            BrowserAction::Select(id, toggle) => Some(ImportedAction::Select {
+                id: Some(id),
+                toggle,
+            }),
+            BrowserAction::SetSiblingIndex(_, _) => None,
         })
         .collect()
 }

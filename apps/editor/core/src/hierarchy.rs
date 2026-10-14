@@ -10,24 +10,19 @@ use crate::selection::Selection;
 
 pub use crate::hierarchy_revision::HierarchyRevision;
 
-/// Return root identities in ascending order.
+/// Return root identities in their authored order.
 pub fn roots(scene: &Scene) -> Vec<EntityId> {
-    scene
-        .entities()
-        .filter(|entity| entity.parent.is_none())
-        .map(|entity| entity.id)
-        .collect()
+    scene.sibling_group(None).unwrap_or_default().to_vec()
 }
 
-/// Return direct child identities in ascending order.
+/// Return direct child identities in their authored order.
 ///
 /// A missing parent has no children and returns an empty list.
 pub fn children(scene: &Scene, parent: EntityId) -> Vec<EntityId> {
     scene
-        .entities()
-        .filter(|entity| entity.parent == Some(parent))
-        .map(|entity| entity.id)
-        .collect()
+        .sibling_group(Some(parent))
+        .unwrap_or_default()
+        .to_vec()
 }
 
 /// Change an entity's parent while preserving its exact local transform.

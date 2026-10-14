@@ -1,6 +1,6 @@
 //! Validated entity edits, creation, and subtree removal.
 
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 
 use crate::hierarchy_revision::HierarchyRevision;
 
@@ -22,6 +22,7 @@ impl Scene {
                 format!("entity {} does not exist", id.0),
             ));
         }
+        let old_parent = self.entities[&id].parent;
         let mut candidate = self.clone();
         // Existence was checked above; the clone contains the same identities.
         let entity = candidate
@@ -34,6 +35,11 @@ impl Scene {
                 operation,
                 "entity identity cannot be changed",
             ));
+        }
+        let new_parent = entity.parent;
+        if old_parent != new_parent {
+            candidate.validate_topology(operation)?;
+            candidate.move_sibling_group(id, old_parent, new_parent, operation)?;
         }
         candidate.validate_for(operation)?;
         candidate.hierarchy_revision = HierarchyRevision::fresh();
@@ -84,6 +90,8 @@ impl Scene {
                 primitive,
             },
         );
+        self.sibling_groups.entry(parent).or_default().push(id);
+        self.sibling_groups.entry(Some(id)).or_default();
         self.next_id = next_id;
         self.hierarchy_revision = HierarchyRevision::fresh();
         Ok(id)
@@ -92,6 +100,7 @@ impl Scene {
     /// Remove an entity and all descendants, returning IDs in ascending order.
     pub fn remove_subtree(&mut self, id: EntityId) -> Result<Vec<EntityId>, SceneError> {
         let operation = "remove subtree";
+        self.validate_for(operation)?;
         if !self.entities.contains_key(&id) {
             return Err(SceneError::new(
                 operation,
@@ -113,8 +122,15 @@ impl Scene {
             removed.push(current);
         }
         removed.sort_unstable();
-        for id in &removed {
-            self.entities.remove(id);
+        let removed_set: BTreeSet<_> = removed.iter().copied().collect();
+        for siblings in self.sibling_groups.values_mut() {
+            siblings.retain(|member| !removed_set.contains(member));
+        }
+        for removed_id in &removed {
+            self.sibling_groups.remove(&Some(*removed_id));
+        }
+        for removed_id in &removed {
+            self.entities.remove(removed_id);
         }
         self.hierarchy_revision = HierarchyRevision::fresh();
         Ok(removed)
