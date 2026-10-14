@@ -79,7 +79,7 @@ pub use timing::{
 };
 pub use transform_hierarchy::{
     TRANSFORM_HIERARCHY_ABI_VERSION, ou_transform_child, ou_transform_child_count,
-    ou_transform_hierarchy_abi_version, ou_transform_parent, ou_transform_set_parent,
-    ou_transform_set_sibling_index,
+    ou_transform_hierarchy_abi_version, ou_transform_parent, ou_transform_set_as_last_sibling,
+    ou_transform_set_parent, ou_transform_set_sibling_index,
 };
 pub use transform_pose::{ou_transform_point, ou_transform_read, ou_transform_write};

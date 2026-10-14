@@ -107,6 +107,9 @@ internal static partial class OpenUnityNative
     internal static extern int ou_transform_set_sibling_index(long runtime, long transform, int index);
 
     [DllImport("openunity_engine", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
+    internal static extern int ou_transform_set_as_last_sibling(long runtime, long transform);
+
+    [DllImport("openunity_engine", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
     internal static extern int ou_transform_point(long runtime, long transform,
         [In, MarshalAs(UnmanagedType.LPArray, SizeParamIndex = 4)] float[] input,
         [Out, MarshalAs(UnmanagedType.LPArray, SizeParamIndex = 4)] float[] output, int count, int inverse);

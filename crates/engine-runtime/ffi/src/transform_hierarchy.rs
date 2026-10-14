@@ -90,3 +90,15 @@ pub extern "C" fn ou_transform_set_sibling_index(runtime: i64, transform: i64, i
     })
     .unwrap_or_else(|error| error)
 }
+
+/// Move a Transform to the end of its existing ordered sibling group.
+// SAFETY: unique symbol within the reserved ABI namespace.
+#[unsafe(no_mangle)]
+pub extern "C" fn ou_transform_set_as_last_sibling(runtime: i64, transform: i64) -> i32 {
+    with_runtime(runtime, |runtime| {
+        object_id(transform)
+            .and_then(|id| runtime.transform_set_as_last_sibling(id))
+            .map_or_else(runtime_error, |()| 0)
+    })
+    .unwrap_or_else(|error| error)
+}

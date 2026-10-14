@@ -5,6 +5,33 @@ use engine_object::ObjectId;
 use engine_scene::RootOwner;
 
 impl Runtime {
+    /// Move a Transform to the end of its current ordered sibling group.
+    /// # Errors
+    /// Rejects stale or malformed identities and roots without a scene owner.
+    pub fn transform_set_as_last_sibling(
+        &mut self,
+        transform: ObjectId,
+    ) -> Result<(), RuntimeError> {
+        let count = self.sibling_group_count(transform)?;
+        let last_index = count.checked_sub(1).ok_or(RuntimeError::InvalidKind)?;
+        let last_index = i32::try_from(last_index).map_err(|_| RuntimeError::CountOverflow)?;
+
+        self.transform_set_sibling_index(transform, last_index)
+    }
+
+    fn sibling_group_count(&self, transform: ObjectId) -> Result<usize, RuntimeError> {
+        self.validate_sibling_index_target(transform)?;
+
+        match self
+            .hierarchy
+            .validated_parent(transform)
+            .map_err(crate::hierarchy::map_hierarchy_error)?
+        {
+            Some(parent) => Ok(self.validate_sibling_group(transform, parent)?.len()),
+            None => self.scene_root_sibling_count(transform),
+        }
+    }
+
     /// Move a live Transform within its parent's children or scene-root sequence.
     /// # Errors
     /// Rejects stale/malformed identities, unowned roots, unavailable scenes,
@@ -74,6 +101,22 @@ impl Runtime {
         self.hierarchy
             .set_scene_root_sibling_index(scene, transform, index)
             .map_err(crate::hierarchy::map_hierarchy_error)
+    }
+
+    fn scene_root_sibling_count(&self, transform: ObjectId) -> Result<usize, RuntimeError> {
+        let scene = match self.hierarchy.root_owner(transform) {
+            Some(RootOwner::Scene(scene)) => scene,
+            Some(RootOwner::Unowned) => return Err(RuntimeError::Unsupported),
+            None => return Err(RuntimeError::InvalidKind),
+        };
+
+        let roots = self
+            .hierarchy
+            .validate_scene_root_group(scene, transform)
+            .map_err(crate::hierarchy::map_hierarchy_error)?;
+        self.validate_scene_root_group(scene, roots)?;
+
+        Ok(roots.len())
     }
 
     fn validate_sibling_index_target(&self, transform: ObjectId) -> Result<(), RuntimeError> {

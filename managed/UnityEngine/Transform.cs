@@ -23,6 +23,7 @@ public class Transform : Component
             CheckNative(found, "parent query");
             return found == 0 ? null : GameObject.WrapTransform(Context, found);
         }
+        set => SetParent(value, true);
     }
 
     public int childCount => Context.Invoke(runtime =>
@@ -41,46 +42,17 @@ public class Transform : Component
 
     public void SetSiblingIndex(int index)
     {
-        Context.CheckLifecycleThreadIfInitialized();
-        int status = Context.Invoke(runtime =>
-        {
-            Context.RequireTransformHierarchy();
-
-            int status;
-            try
-            {
-                status = OpenUnityNative.ou_transform_set_sibling_index(runtime, Identity, index);
-            }
-            catch (EntryPointNotFoundException error)
-            {
-                throw new NotSupportedException("OpenUnity Transform hierarchy ABI 1.0 is unavailable.", error);
-            }
-
-            return status;
-        });
-
-        if (status == -20)
-            throw new ArgumentOutOfRangeException(
-                nameof(index), index, "Sibling index must identify an existing child or root position.");
-        if (status == -8)
-            throw new InvalidOperationException(
-                "OpenUnity cannot reorder a malformed or mixed-ownership Transform group.");
-        if (status == -2)
-            throw new MissingReferenceException("The OpenUnity Transform has been destroyed.");
-        if (status == -11)
-            throw new NotSupportedException(
-                "OpenUnity cannot reorder an unowned root without an ordered scene group.");
-        if (status == -17)
-            throw new InvalidOperationException(
-                "OpenUnity cannot reorder this Transform while scene staging is active or from a non-owner thread.");
-        if (status != 0)
-        {
-            CheckNative(status, "sibling index assignment");
-            throw RuntimeContext.Failure("sibling index assignment", status);
-        }
-
-        Context.PumpLifecycleIfInitialized();
+        ChangeSiblingOrder(
+            runtime => OpenUnityNative.ou_transform_set_sibling_index(runtime, Identity, index),
+            "sibling index assignment",
+            index);
     }
+
+    public void SetAsFirstSibling() => SetSiblingIndex(0);
+
+    public void SetAsLastSibling() => ChangeSiblingOrder(
+        runtime => OpenUnityNative.ou_transform_set_as_last_sibling(runtime, Identity),
+        "last sibling assignment");
 
     public Transform GetChild(int index)
     {
@@ -106,6 +78,51 @@ public class Transform : Component
             return status;
         });
         Context.PumpLifecycleIfInitialized();
+    }
+
+    public void SetParent(Transform? parent) => SetParent(parent, true);
+
+    private void ChangeSiblingOrder(Func<long, int> nativeOperation, string operation, int? index = null)
+    {
+        Context.CheckLifecycleThreadIfInitialized();
+        int status = Context.Invoke(runtime =>
+        {
+            Context.RequireTransformHierarchy();
+            try
+            {
+                return nativeOperation(runtime);
+            }
+            catch (EntryPointNotFoundException error)
+            {
+                throw new NotSupportedException("OpenUnity Transform hierarchy ABI 1.0 is unavailable.", error);
+            }
+        });
+
+        ThrowSiblingOrderFailure(status, operation, index);
+        Context.PumpLifecycleIfInitialized();
+    }
+
+    private static void ThrowSiblingOrderFailure(int status, string operation, int? index)
+    {
+        if (status == -20 && index is int invalidIndex)
+            throw new ArgumentOutOfRangeException(
+                nameof(index), invalidIndex, "Sibling index must identify an existing child or root position.");
+        if (status == -8)
+            throw new InvalidOperationException(
+                "OpenUnity cannot reorder a malformed or mixed-ownership Transform group.");
+        if (status == -2)
+            throw new MissingReferenceException("The OpenUnity Transform has been destroyed.");
+        if (status == -11)
+            throw new NotSupportedException(
+                "OpenUnity cannot reorder an unowned root without an ordered scene group.");
+        if (status == -17)
+            throw new InvalidOperationException(
+                "OpenUnity cannot reorder this Transform while scene staging is active or from a non-owner thread.");
+        if (status != 0)
+        {
+            CheckNative(status, operation);
+            throw RuntimeContext.Failure(operation, status);
+        }
     }
 
     public Vector3 TransformPoint(Vector3 point) => ConvertPoint(point, false);
