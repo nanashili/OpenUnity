@@ -18,9 +18,9 @@ pub(super) fn render_entity_row(
     ui: &mut Ui,
     row: EntityRow<'_>,
     selected: &BTreeSet<EntityId>,
-    row_state: crate::scene_visibility::SceneRowState,
+    row_state: crate::SceneRowState,
     scene: &Scene,
-    mut visibility: Option<&mut crate::scene_visibility::SceneVisibility>,
+    mut visibility: Option<&mut crate::SceneViewState>,
     actions: &mut Vec<EditorAction>,
 ) -> Option<bool> {
     let EntityRow {
@@ -122,19 +122,21 @@ pub(super) fn render_entity_row(
 
 fn scene_controls(
     ui: &mut Ui,
-    state: crate::scene_visibility::SceneRowState,
+    state: crate::SceneRowState,
     id: EntityId,
     scene: &Scene,
     pointer_over_row: bool,
-    visibility: &mut crate::scene_visibility::SceneVisibility,
+    visibility: &mut crate::SceneViewState,
 ) -> bool {
     let mut control_clicked = false;
     let recursive = !ui.input(|input| input.modifiers.alt);
 
     let (glyph, description) = state.visibility_label();
-    let response = ui.small_button(glyph).on_hover_text(format!(
-        "{description}. Alt-click changes only this entity."
-    ));
+    let response = ui
+        .add_enabled(state.visibility_enabled, egui::Button::new(glyph).small())
+        .on_hover_text(format!(
+            "{description}. Alt-click changes only this entity."
+        ));
     if response.clicked() {
         visibility.toggle_visibility(scene, id, recursive);
         control_clicked = true;

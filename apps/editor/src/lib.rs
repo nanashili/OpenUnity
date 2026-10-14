@@ -73,7 +73,7 @@ pub mod font_styles;
 pub mod inspector_lock;
 pub mod panels;
 mod resources;
-mod scene_visibility;
+pub(crate) use openunity_editor_core::scene_view_state::{SceneRowState, SceneViewState};
 
 pub mod tab_titles;
 pub mod workspace;

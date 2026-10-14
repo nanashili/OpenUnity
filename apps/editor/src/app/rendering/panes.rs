@@ -60,7 +60,7 @@ impl EditorApp {
                     ui,
                     self.document.scene(),
                     self.document.selection(),
-                    &self.scene_visibility,
+                    &mut self.scene_visibility,
                 ));
         }
     }

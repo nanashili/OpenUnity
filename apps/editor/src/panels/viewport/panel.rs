@@ -35,12 +35,7 @@ impl ViewportPanel {
 
     /// Draw the current scene and return validated-model selection requests.
     pub fn show(&mut self, ui: &mut Ui, scene: &Scene, selection: &Selection) -> Vec<EditorAction> {
-        self.show_with_visibility(
-            ui,
-            scene,
-            selection,
-            &crate::scene_visibility::SceneVisibility::default(),
-        )
+        self.show_with_visibility(ui, scene, selection, &mut crate::SceneViewState::default())
     }
 
     pub(crate) fn show_with_visibility(
@@ -48,9 +43,9 @@ impl ViewportPanel {
         ui: &mut Ui,
         scene: &Scene,
         selection: &Selection,
-        visibility: &crate::scene_visibility::SceneVisibility,
+        visibility: &mut crate::SceneViewState,
     ) -> Vec<EditorAction> {
-        self.show_toolbar(ui);
+        self.show_toolbar(ui, scene, visibility);
         let size = ui.available_size().max(Vec2::splat(1.0));
         let (rect, response) = ui.allocate_exact_size(size, Sense::click_and_drag());
         response.clone().on_hover_text(
@@ -74,7 +69,7 @@ impl ViewportPanel {
         Vec::new()
     }
 
-    fn show_toolbar(&mut self, ui: &mut Ui) {
+    fn show_toolbar(&mut self, ui: &mut Ui, scene: &Scene, visibility: &mut crate::SceneViewState) {
         let compact = crate::appearance::is_reference(ui);
         ui.horizontal_wrapped(|ui| {
             ui.strong(if compact {
@@ -86,6 +81,13 @@ impl ViewportPanel {
                 self.center = [0.0; 2];
                 self.zoom = DEFAULT_ZOOM;
             }
+
+            if visibility.is_isolation_active()
+                && ui.button("Exit Isolation").clicked()
+            {
+                visibility.exit_isolation(scene);
+            }
+
             ui.checkbox(&mut self.grid_visible, "World grid");
             if compact {
                 ui.label("ⓘ").on_hover_text(

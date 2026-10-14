@@ -21,7 +21,7 @@ impl HierarchyBrowser {
         ui: &mut Ui,
         scene: &openunity_editor_core::scene::Scene,
         selected: impl IntoIterator<Item = EntityId>,
-        visibility: Option<&mut crate::scene_visibility::SceneVisibility>,
+        visibility: Option<&mut crate::SceneViewState>,
     ) -> Vec<BrowserAction> {
         self.tree_inner(
             ui,
@@ -40,7 +40,7 @@ impl HierarchyBrowser {
         structural_edits_enabled: bool,
         mut authored_scene: Option<(
             &openunity_editor_core::scene::Scene,
-            &mut crate::scene_visibility::SceneVisibility,
+            &mut crate::SceneViewState,
         )>,
     ) -> Vec<BrowserAction> {
         self.update_selected_ids(selected);
@@ -120,7 +120,7 @@ impl HierarchyBrowser {
         structural_edits_enabled: bool,
         authored_scene: &mut Option<(
             &openunity_editor_core::scene::Scene,
-            &mut crate::scene_visibility::SceneVisibility,
+            &mut crate::SceneViewState,
         )>,
         actions: &mut Vec<BrowserAction>,
         branch_toggles: &mut Vec<usize>,

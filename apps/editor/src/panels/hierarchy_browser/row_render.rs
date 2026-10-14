@@ -10,6 +10,13 @@ use layout::{
 
 pub(super) use layout::draw_disclosure_glyph;
 
+struct SceneControlSpec {
+    offset_from_right: f32,
+    state: (&'static str, &'static str),
+    enabled: bool,
+    modifier_hint: &'static str,
+}
+
 pub(super) struct RowRender {
     pub(super) geometry: RowGeometry,
     pub(super) control: serde_json::Value,
@@ -26,10 +33,10 @@ pub(super) struct SiblingDragContext<'a> {
 pub(super) struct RowContext<'a> {
     pub(super) row_index: usize,
     pub(super) selected: bool,
-    pub(super) row_state: crate::scene_visibility::SceneRowState,
+    pub(super) row_state: crate::SceneRowState,
     pub(super) authored_scene: Option<(
         &'a openunity_editor_core::scene::Scene,
-        &'a mut crate::scene_visibility::SceneVisibility,
+        &'a mut crate::SceneViewState,
     )>,
     pub(super) has_children: bool,
     pub(super) expanded: bool,
@@ -100,17 +107,20 @@ fn render_scene_controls(
     ui: &mut Ui,
     row: &CachedRow,
     layout: &RowLayout,
-    state: crate::scene_visibility::SceneRowState,
+    state: crate::SceneRowState,
     scene: &openunity_editor_core::scene::Scene,
-    visibility: &mut crate::scene_visibility::SceneVisibility,
+    visibility: &mut crate::SceneViewState,
 ) -> bool {
     let recursive = !ui.input(|input| input.modifiers.alt);
     let visibility_hovered = render_scene_control(
         ui,
         layout.rect,
-        12.0,
-        state.visibility_label(),
-        "Alt-click changes only this entity.",
+        SceneControlSpec {
+            offset_from_right: 12.0,
+            state: state.visibility_label(),
+            enabled: state.visibility_enabled,
+            modifier_hint: "Alt-click changes only this entity.",
+        },
         |visibility| visibility.toggle_visibility(scene, row.id, recursive),
         visibility,
     );
@@ -118,9 +128,12 @@ fn render_scene_controls(
         render_scene_control(
             ui,
             layout.rect,
-            34.0,
-            state.picking_label(),
-            "Alt-click changes picking only for this entity.",
+            SceneControlSpec {
+                offset_from_right: 34.0,
+                state: state.picking_label(),
+                enabled: true,
+                modifier_hint: "Alt-click changes picking only for this entity.",
+            },
             |visibility| visibility.toggle_pickability(scene, row.id, recursive),
             visibility,
         )
@@ -134,19 +147,20 @@ fn render_scene_controls(
 fn render_scene_control(
     ui: &mut Ui,
     row: egui::Rect,
-    offset_from_right: f32,
-    (glyph, label): (&'static str, &'static str),
-    modifier_hint: &'static str,
-    toggle: impl FnOnce(&mut crate::scene_visibility::SceneVisibility),
-    visibility: &mut crate::scene_visibility::SceneVisibility,
+    control: SceneControlSpec,
+    toggle: impl FnOnce(&mut crate::SceneViewState),
+    visibility: &mut crate::SceneViewState,
 ) -> bool {
     let rect = egui::Rect::from_center_size(
-        egui::pos2(row.right() - offset_from_right, row.center().y),
+        egui::pos2(row.right() - control.offset_from_right, row.center().y),
         egui::vec2(20.0, row.height()),
     );
     let response = ui
-        .put(rect, egui::Button::new(glyph).frame(false))
-        .on_hover_text(format!("{label}. {modifier_hint}"));
+        .add_enabled_ui(control.enabled, |ui| {
+            ui.put(rect, egui::Button::new(control.state.0).frame(false))
+        })
+        .inner
+        .on_hover_text(format!("{}. {}", control.state.1, control.modifier_hint));
 
     if response.clicked() {
         toggle(visibility);

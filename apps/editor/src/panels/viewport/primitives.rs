@@ -17,7 +17,7 @@ impl ViewportPanel {
         rect: Rect,
         scene: &Scene,
         selection: &Selection,
-        visibility: &crate::scene_visibility::SceneVisibility,
+        visibility: &crate::SceneViewState,
         response: &egui::Response,
     ) -> Option<EntityId> {
         let selected: BTreeSet<_> = selection.ids().collect();

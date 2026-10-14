@@ -68,6 +68,8 @@ pub enum Command {
     ClearSelection,
     /// Toggle Scene view visibility for selected authored GameObjects.
     ToggleSceneVisibility,
+    /// Toggle the authored Scene preview's selection isolation view.
+    ToggleSceneIsolation,
     /// Toggle Scene view pickability for selected authored GameObjects.
     ToggleScenePicking,
 }
@@ -76,13 +78,19 @@ pub enum Command {
 ///
 /// Either Control or Command enables letter shortcuts. Both may be true because
 /// a frontend can report Command as its platform's logical shortcut modifier.
-/// Alt is never accepted; Shift is accepted only for Control/Command+Shift+Z.
-/// Delete, Escape, H, and L require no modifiers. Text focus suppresses all commands.
+/// Alt is never accepted. Shift is accepted for Shift+H isolation and
+/// Control/Command+Shift+Z redo. Delete, Escape, H, and L require no modifiers.
+/// Text focus suppresses all commands.
 pub fn resolve(chord: Chord, text_input: bool) -> Option<Command> {
     if text_input || chord.modifiers.alt {
         return None;
     }
+
     let modifiers = chord.modifiers;
+    if chord.key == Key::H && modifiers.shift && !modifiers.ctrl && !modifiers.command {
+        return Some(Command::ToggleSceneIsolation);
+    }
+
     if modifiers.ctrl || modifiers.command {
         return match (chord.key, modifiers.shift) {
             (Key::N, false) => Some(Command::NewScene),
@@ -126,6 +134,15 @@ impl StateAvailability {
     /// selecting that path is a separate frontend operation. Unsupported actions
     /// are deliberately absent from [`Command`].
     pub fn availability(self, command: Command) -> Result<(), &'static str> {
+        self.availability_with_isolation(command, false)
+    }
+
+    /// Check availability while allowing active isolation to exit without selection.
+    pub fn availability_with_isolation(
+        self,
+        command: Command,
+        isolation_active: bool,
+    ) -> Result<(), &'static str> {
         match command {
             Command::Undo if !self.can_undo => Err("Nothing to undo."),
             Command::Redo if !self.can_redo => Err("Nothing to redo."),
@@ -135,6 +152,9 @@ impl StateAvailability {
             | Command::ToggleScenePicking
                 if !self.has_selection =>
             {
+                Err("No entities selected.")
+            }
+            Command::ToggleSceneIsolation if !isolation_active && !self.has_selection => {
                 Err("No entities selected.")
             }
             Command::Save if !self.has_save_path => {

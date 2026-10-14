@@ -24,7 +24,7 @@ pub(crate) fn show_reference_with_visibility(
     scene: &Scene,
     selection: &Selection,
     browser: &mut HierarchyBrowser,
-    visibility: &mut crate::scene_visibility::SceneVisibility,
+    visibility: &mut crate::SceneViewState,
 ) -> Vec<EditorAction> {
     show_reference_inner(ui, scene, selection, browser, Some(visibility))
 }
@@ -34,7 +34,7 @@ fn show_reference_inner(
     scene: &Scene,
     selection: &Selection,
     browser: &mut HierarchyBrowser,
-    visibility: Option<&mut crate::scene_visibility::SceneVisibility>,
+    visibility: Option<&mut crate::SceneViewState>,
 ) -> Vec<EditorAction> {
     let mut actions = Vec::new();
     let primary = selection.primary().filter(|id| scene.get(*id).is_some());

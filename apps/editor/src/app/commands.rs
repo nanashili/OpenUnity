@@ -11,8 +11,9 @@ impl EditorApp {
             ),
             has_save_path: self.save_path.is_some() || !self.scene_text.trim().is_empty(),
         };
+        let isolation_active = self.scene_visibility.is_isolation_active();
         let result = availability
-            .availability(command)
+            .availability_with_isolation(command, isolation_active)
             .map_err(str::to_owned)
             .and_then(|()| match command {
                 Command::NewScene => self.request_new(),
@@ -22,6 +23,7 @@ impl EditorApp {
                 Command::Redo => self.redo().map(|_| ()),
                 Command::DeleteSelection => self.apply_action(EditorAction::DeleteSelection),
                 Command::ToggleSceneVisibility => self.toggle_selected_scene_visibility(),
+                Command::ToggleSceneIsolation => self.toggle_scene_isolation(),
                 Command::ToggleScenePicking => self.toggle_selected_scene_picking(),
                 Command::ClearSelection => {
                     if let Some(document) = &mut self.imported {
@@ -58,6 +60,27 @@ impl EditorApp {
         self.scene_visibility
             .toggle_pickability_for_selection(self.document.scene(), selected);
         Ok(())
+    }
+
+    fn toggle_scene_isolation(&mut self) -> Result<(), String> {
+        if self.imported.is_some() {
+            return Err("Scene isolation is unavailable for imported documents.".into());
+        }
+
+        if self.scene_visibility.is_isolation_active() {
+            self.scene_visibility.exit_isolation(self.document.scene());
+            return Ok(());
+        }
+
+        let selected = self.document.selection().ids().collect::<Vec<_>>();
+        if self
+            .scene_visibility
+            .enter_isolation(self.document.scene(), selected)
+        {
+            return Ok(());
+        }
+
+        Err("No entities selected.".into())
     }
 
     pub(super) fn shortcuts(&mut self, ctx: &Context) {

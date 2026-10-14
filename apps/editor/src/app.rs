@@ -124,7 +124,7 @@ pub struct EditorApp {
     workspace: Workspace,
     hierarchy_browser: HierarchyBrowser,
     hierarchy_expansion: hierarchy::ExpansionState,
-    scene_visibility: crate::scene_visibility::SceneVisibility,
+    scene_visibility: crate::SceneViewState,
     inspector_scroll: serde_json::Value,
     inspector_scope: u64,
     inspector_controller: InspectorController,

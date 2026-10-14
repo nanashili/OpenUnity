@@ -24,7 +24,7 @@ impl EditorApp {
             workspace: Workspace::default(),
             hierarchy_browser: HierarchyBrowser::default(),
             hierarchy_expansion: hierarchy::ExpansionState::default(),
-            scene_visibility: crate::scene_visibility::SceneVisibility::default(),
+            scene_visibility: crate::SceneViewState::default(),
             inspector_scroll: serde_json::Value::Null,
             inspector_scope: 1,
             inspector_controller: InspectorController::deferred(),

@@ -6,6 +6,7 @@ pub mod history;
 pub mod layout;
 pub mod project;
 pub mod scene;
+pub mod scene_view_state;
 pub mod search;
 pub mod selection;
 

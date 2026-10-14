@@ -30,7 +30,7 @@ pub(crate) fn show_with_visibility(
     scene: &Scene,
     selection: &Selection,
     expansion: &mut super::ExpansionState,
-    visibility: &mut crate::scene_visibility::SceneVisibility,
+    visibility: &mut crate::SceneViewState,
 ) -> Vec<EditorAction> {
     show_inner(ui, scene, selection, expansion, Some(visibility))
 }
@@ -40,7 +40,7 @@ fn show_inner(
     scene: &Scene,
     selection: &Selection,
     expansion: &mut super::ExpansionState,
-    visibility: Option<&mut crate::scene_visibility::SceneVisibility>,
+    visibility: Option<&mut crate::SceneViewState>,
 ) -> Vec<EditorAction> {
     let mut actions = Vec::new();
     let primary = selection.primary().filter(|id| scene.get(*id).is_some());
@@ -140,7 +140,7 @@ fn forest(
     scene: &Scene,
     selected: &BTreeSet<EntityId>,
     expansion: &mut super::ExpansionState,
-    mut visibility: Option<&mut crate::scene_visibility::SceneVisibility>,
+    mut visibility: Option<&mut crate::SceneViewState>,
     actions: &mut Vec<EditorAction>,
 ) {
     expansion.reconcile(scene);
