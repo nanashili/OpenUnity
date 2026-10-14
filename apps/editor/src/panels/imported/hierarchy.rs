@@ -1,9 +1,11 @@
 //! Authored-order hierarchy presentation and canonical handle selection.
 
+mod row_projection;
+
 use eframe::egui::{self, Ui};
 use openunity_editor_core::imported_scene::ImportedDocument;
 
-use super::super::hierarchy_browser::{HierarchyBrowser, Row};
+use super::super::hierarchy_browser::HierarchyBrowser;
 use super::{ImportedAction, actions::selection_toggle};
 
 /// Compact tree; structural controls remain unsupported for imported documents.
@@ -19,42 +21,21 @@ pub fn show_hierarchy_reference(
             );
         browser.search(ui);
     });
-    let mut pending: Vec<_> = document
-        .roots()
-        .into_iter()
-        .rev()
-        .map(|id| (id, None, 0))
-        .collect();
-    let mut rows = Vec::new();
-    while let Some((id, parent, depth)) = pending.pop() {
-        match document.entity(id) {
-            Ok(entity) => rows.push(Row {
-                id,
-                parent,
-                name: entity.game_object.name.clone(),
-                depth,
-                active: entity.game_object.active,
-                selected: document.selection().contains(&id),
-            }),
-            Err(error) => {
-                ui.colored_label(ui.visuals().error_fg_color, error.to_string());
-                continue;
-            }
-        }
-        match document.children(id) {
-            Ok(children) => pending.extend(
-                children
-                    .into_iter()
-                    .rev()
-                    .map(|child| (child, Some(id), depth + 1)),
-            ),
-            Err(error) => {
-                ui.colored_label(ui.visuals().error_fg_color, error.to_string());
-            }
-        }
+    let revision = document.hierarchy_revision();
+    if let Err(error) = browser.refresh(revision, || row_projection::build(document)) {
+        ui.colored_label(
+            ui.visuals().error_fg_color,
+            format!("Hierarchy unavailable: {error}"),
+        );
+        return Vec::new();
     }
+
     browser
-        .tree(ui, &document.plan().scene_name, &rows)
+        .tree(
+            ui,
+            &document.plan().scene_name,
+            document.selection().iter().copied(),
+        )
         .into_iter()
         .map(|(id, toggle)| ImportedAction::Select {
             id: Some(id),

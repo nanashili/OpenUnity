@@ -19,10 +19,18 @@ pub fn show_reference(
     let mut actions = Vec::new();
     let primary = selection.primary().filter(|id| scene.get(*id).is_some());
     toolbar(ui, scene, primary, browser, &mut actions);
-    let rows = forest_rows(scene, selection);
+    let revision = scene.hierarchy_revision();
+    if let Err(error) = browser.refresh(revision, || forest_rows(scene)) {
+        ui.colored_label(
+            ui.visuals().error_fg_color,
+            format!("Hierarchy unavailable: {error}"),
+        );
+        return actions;
+    }
+
     actions.extend(
         browser
-            .tree(ui, scene.name(), &rows)
+            .tree(ui, scene.name(), selection.ids())
             .into_iter()
             .map(|(id, toggle)| EditorAction::Select { id, toggle }),
     );
@@ -83,7 +91,8 @@ fn toolbar(
     });
 }
 
-fn forest_rows(scene: &Scene, selection: &Selection) -> Vec<Row> {
+fn forest_rows(scene: &Scene) -> Result<Vec<Row>, String> {
+    let expected_row_count = scene.entities().len();
     let mut children: BTreeMap<Option<EntityId>, Vec<&Entity>> = BTreeMap::new();
     for entity in scene.entities() {
         children.entry(entity.parent).or_default().push(entity);
@@ -100,13 +109,25 @@ fn forest_rows(scene: &Scene, selection: &Selection) -> Vec<Row> {
             name: entity.name.clone(),
             depth,
             active: entity.active,
-            selected: selection.ids().any(|id| id == entity.id),
         });
-        if depth + 1 < MAX_HIERARCHY_DEPTH
-            && let Some(descendants) = children.get(&Some(entity.id))
-        {
-            pending.extend(descendants.iter().rev().map(|e| (*e, depth + 1)));
+
+        if let Some(descendants) = children.get(&Some(entity.id)) {
+            let child_depth = depth
+                .checked_add(1)
+                .ok_or_else(|| "Native hierarchy depth overflow.".to_owned())?;
+            if child_depth >= MAX_HIERARCHY_DEPTH {
+                return Err("Native hierarchy exceeds its validated depth limit.".to_owned());
+            }
+            pending.extend(descendants.iter().rev().map(|e| (*e, child_depth)));
         }
     }
-    rows
+
+    if rows.len() != expected_row_count {
+        return Err(format!(
+            "Native hierarchy projected {} of {expected_row_count} entities.",
+            rows.len()
+        ));
+    }
+
+    Ok(rows)
 }

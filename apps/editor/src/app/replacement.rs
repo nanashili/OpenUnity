@@ -90,6 +90,7 @@ impl EditorApp {
             Pending::Close => self.close_allowed = true,
         }
         if replacing {
+            self.hierarchy_browser.reset_document();
             self.inspector_scope = next_scope;
             self.reconcile_inspector();
         }
