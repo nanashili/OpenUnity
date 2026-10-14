@@ -17,12 +17,15 @@ impl EditorApp {
                         &mut self.hierarchy_browser,
                     ));
             } else {
-                pending.actions.extend(hierarchy::show_reference(
-                    ui,
-                    self.document.scene(),
-                    self.document.selection(),
-                    &mut self.hierarchy_browser,
-                ));
+                pending
+                    .actions
+                    .extend(hierarchy::show_reference_with_visibility(
+                        ui,
+                        self.document.scene(),
+                        self.document.selection(),
+                        &mut self.hierarchy_browser,
+                        &mut self.scene_visibility,
+                    ));
             }
         } else {
             egui::ScrollArea::vertical()
@@ -33,11 +36,12 @@ impl EditorApp {
                             .imported_actions
                             .extend(imported::show_hierarchy(ui, document));
                     } else {
-                        pending.actions.extend(hierarchy::show_with_expansion(
+                        pending.actions.extend(hierarchy::show_with_visibility(
                             ui,
                             self.document.scene(),
                             self.document.selection(),
                             &mut self.hierarchy_expansion,
+                            &mut self.scene_visibility,
                         ));
                     }
                 });
@@ -50,11 +54,14 @@ impl EditorApp {
                 .imported_actions
                 .extend(self.imported_viewport.show(ui, document));
         } else {
-            pending.actions.extend(self.viewport_panel.show(
-                ui,
-                self.document.scene(),
-                self.document.selection(),
-            ));
+            pending
+                .actions
+                .extend(self.viewport_panel.show_with_visibility(
+                    ui,
+                    self.document.scene(),
+                    self.document.selection(),
+                    &self.scene_visibility,
+                ));
         }
     }
 

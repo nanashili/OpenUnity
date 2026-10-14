@@ -73,6 +73,7 @@ pub mod font_styles;
 pub mod inspector_lock;
 pub mod panels;
 mod resources;
+mod scene_visibility;
 
 pub mod tab_titles;
 pub mod workspace;

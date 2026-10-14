@@ -53,6 +53,7 @@ impl EditorApp {
         }
         self.apply_authoring_action(action)?;
         self.hierarchy_expansion.reconcile(self.document.scene());
+        self.scene_visibility.reconcile(self.document.scene());
         self.reconcile_inspector();
         Ok(())
     }

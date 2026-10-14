@@ -35,6 +35,21 @@ impl ViewportPanel {
 
     /// Draw the current scene and return validated-model selection requests.
     pub fn show(&mut self, ui: &mut Ui, scene: &Scene, selection: &Selection) -> Vec<EditorAction> {
+        self.show_with_visibility(
+            ui,
+            scene,
+            selection,
+            &crate::scene_visibility::SceneVisibility::default(),
+        )
+    }
+
+    pub(crate) fn show_with_visibility(
+        &mut self,
+        ui: &mut Ui,
+        scene: &Scene,
+        selection: &Selection,
+        visibility: &crate::scene_visibility::SceneVisibility,
+    ) -> Vec<EditorAction> {
         self.show_toolbar(ui);
         let size = ui.available_size().max(Vec2::splat(1.0));
         let (rect, response) = ui.allocate_exact_size(size, Sense::click_and_drag());
@@ -47,7 +62,7 @@ impl ViewportPanel {
         painter.rect_filled(rect, 0.0, Color32::from_rgb(23, 29, 34));
         self.draw_grid(&painter, rect);
 
-        let hit = self.draw_primitives(&painter, rect, scene, selection, &response);
+        let hit = self.draw_primitives(&painter, rect, scene, selection, visibility, &response);
         if response.clicked_by(PointerButton::Primary)
             && let Some(id) = hit
         {

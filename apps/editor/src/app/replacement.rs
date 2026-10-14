@@ -92,6 +92,7 @@ impl EditorApp {
         if replacing {
             self.hierarchy_browser.reset_document();
             self.hierarchy_expansion.clear();
+            self.scene_visibility.clear();
             self.inspector_scope = next_scope;
             self.reconcile_inspector();
         }

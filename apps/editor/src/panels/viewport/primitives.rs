@@ -17,6 +17,7 @@ impl ViewportPanel {
         rect: Rect,
         scene: &Scene,
         selection: &Selection,
+        visibility: &crate::scene_visibility::SceneVisibility,
         response: &egui::Response,
     ) -> Option<EntityId> {
         let selected: BTreeSet<_> = selection.ids().collect();
@@ -24,6 +25,9 @@ impl ViewportPanel {
         let mut hit = None;
         let pointer = response.interact_pointer_pos();
         for entity in scene.entities() {
+            if !visibility.is_visible(entity.id) {
+                continue;
+            }
             let Some(world) = world_transform(scene, entity.id, &mut worlds) else {
                 continue;
             };

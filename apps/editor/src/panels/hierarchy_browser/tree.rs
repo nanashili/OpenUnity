@@ -13,6 +13,36 @@ impl HierarchyBrowser {
         selected: impl IntoIterator<Item = EntityId>,
         structural_edits_enabled: bool,
     ) -> Vec<BrowserAction> {
+        self.tree_inner(ui, scene_name, selected, structural_edits_enabled, None)
+    }
+
+    pub(crate) fn authored_tree(
+        &mut self,
+        ui: &mut Ui,
+        scene: &openunity_editor_core::scene::Scene,
+        selected: impl IntoIterator<Item = EntityId>,
+        visibility: Option<&mut crate::scene_visibility::SceneVisibility>,
+    ) -> Vec<BrowserAction> {
+        self.tree_inner(
+            ui,
+            scene.name(),
+            selected,
+            true,
+            visibility.map(|state| (scene, state)),
+        )
+    }
+
+    fn tree_inner(
+        &mut self,
+        ui: &mut Ui,
+        scene_name: &str,
+        selected: impl IntoIterator<Item = EntityId>,
+        structural_edits_enabled: bool,
+        mut authored_scene: Option<(
+            &openunity_editor_core::scene::Scene,
+            &mut crate::scene_visibility::SceneVisibility,
+        )>,
+    ) -> Vec<BrowserAction> {
         self.update_selected_ids(selected);
 
         draw_column_header(ui);
@@ -39,6 +69,7 @@ impl HierarchyBrowser {
             ui,
             row_height,
             structural_edits_enabled,
+            &mut authored_scene,
             &mut actions,
             &mut branch_toggles,
         );
@@ -87,6 +118,10 @@ impl HierarchyBrowser {
         ui: &mut Ui,
         row_height: f32,
         structural_edits_enabled: bool,
+        authored_scene: &mut Option<(
+            &openunity_editor_core::scene::Scene,
+            &mut crate::scene_visibility::SceneVisibility,
+        )>,
         actions: &mut Vec<BrowserAction>,
         branch_toggles: &mut Vec<usize>,
     ) {
@@ -104,6 +139,9 @@ impl HierarchyBrowser {
         let source_rows = &source.rows;
         let sibling_groups = &source.sibling_groups;
         let selected_ids = &self.selected_ids;
+        let visibility_states = authored_scene
+            .as_ref()
+            .map(|(scene, visibility)| visibility.row_states(scene));
         let collapsed_rows = &self.collapsed_rows;
         let query_active = !self.lowercase_query.is_empty();
         let geometry = &mut self.row_geometry;
@@ -131,14 +169,24 @@ impl HierarchyBrowser {
                             row_render::render_row(
                                 ui,
                                 row,
-                                row_index,
-                                selected,
-                                has_children,
-                                expanded,
-                                row_render::SiblingDragContext {
-                                    enabled: structural_edits_enabled && !query_active,
-                                    structural_edits_enabled,
-                                    order: sibling_order,
+                                row_render::RowContext {
+                                    row_index,
+                                    selected,
+                                    visibility_state: visibility_states
+                                        .as_ref()
+                                        .and_then(|states| states.get(&row.id))
+                                        .copied()
+                                        .unwrap_or_default(),
+                                    authored_scene: authored_scene
+                                        .as_mut()
+                                        .map(|(scene, visibility)| (*scene, &mut **visibility)),
+                                    has_children,
+                                    expanded,
+                                    sibling_drag: row_render::SiblingDragContext {
+                                        enabled: structural_edits_enabled && !query_active,
+                                        structural_edits_enabled,
+                                        order: sibling_order,
+                                    },
                                 },
                             )
                         })

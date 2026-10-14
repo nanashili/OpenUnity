@@ -1,7 +1,7 @@
 use std::collections::BTreeSet;
 
 use eframe::egui::Ui;
-use openunity_editor_core::scene::{Entity, EntityId};
+use openunity_editor_core::scene::{Entity, EntityId, Scene};
 
 use crate::EditorAction;
 
@@ -18,6 +18,9 @@ pub(super) fn render_entity_row(
     ui: &mut Ui,
     row: EntityRow<'_>,
     selected: &BTreeSet<EntityId>,
+    visibility_state: crate::scene_visibility::VisibilityRowState,
+    scene: &Scene,
+    mut visibility: Option<&mut crate::scene_visibility::SceneVisibility>,
     actions: &mut Vec<EditorAction>,
 ) -> Option<bool> {
     let EntityRow {
@@ -28,10 +31,14 @@ pub(super) fn render_entity_row(
         has_children,
         collapsed,
     } = row;
+    let mut visibility_clicked = false;
     let row_response = ui.push_id(entity.id.0, |ui| {
         ui.horizontal(|ui| {
             ui.add_space(depth as f32 * 14.0);
             let disclosure_toggle = disclosure_control(ui, has_children, collapsed);
+            visibility_clicked = visibility.as_mut().is_some_and(|state| {
+                visibility_control(ui, visibility_state, entity.id, scene, state)
+            });
             let label = format!(
                 "{} ({})",
                 entity.name,
@@ -58,6 +65,9 @@ pub(super) fn render_entity_row(
         })
     });
     let (response, disclosure_toggle) = row_response.inner.inner;
+    if visibility_clicked {
+        return None;
+    }
     if disclosure_toggle.is_some() {
         return disclosure_toggle;
     }
@@ -97,6 +107,25 @@ pub(super) fn render_entity_row(
     }
 
     None
+}
+
+fn visibility_control(
+    ui: &mut Ui,
+    state: crate::scene_visibility::VisibilityRowState,
+    id: EntityId,
+    scene: &Scene,
+    visibility: &mut crate::scene_visibility::SceneVisibility,
+) -> bool {
+    let (glyph, description) = state.control_label();
+    let response = ui.small_button(glyph).on_hover_text(format!(
+        "{description}. Alt-click changes only this entity."
+    ));
+    if response.clicked() {
+        let recursive = !ui.input(|input| input.modifiers.alt);
+        visibility.toggle(scene, id, recursive);
+        return true;
+    }
+    false
 }
 
 fn disclosure_control(ui: &mut Ui, has_children: bool, collapsed: bool) -> Option<bool> {

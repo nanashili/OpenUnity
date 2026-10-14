@@ -22,13 +22,33 @@ pub fn show_with_expansion(
     selection: &Selection,
     expansion: &mut super::ExpansionState,
 ) -> Vec<EditorAction> {
+    show_inner(ui, scene, selection, expansion, None)
+}
+
+pub(crate) fn show_with_visibility(
+    ui: &mut Ui,
+    scene: &Scene,
+    selection: &Selection,
+    expansion: &mut super::ExpansionState,
+    visibility: &mut crate::scene_visibility::SceneVisibility,
+) -> Vec<EditorAction> {
+    show_inner(ui, scene, selection, expansion, Some(visibility))
+}
+
+fn show_inner(
+    ui: &mut Ui,
+    scene: &Scene,
+    selection: &Selection,
+    expansion: &mut super::ExpansionState,
+    visibility: Option<&mut crate::scene_visibility::SceneVisibility>,
+) -> Vec<EditorAction> {
     let mut actions = Vec::new();
     let primary = selection.primary().filter(|id| scene.get(*id).is_some());
     let selected: BTreeSet<_> = selection.ids().collect();
 
     creation_controls(ui, scene, primary, selection, &selected, &mut actions);
     parent_control(ui, scene, primary, &mut actions);
-    forest(ui, scene, &selected, expansion, &mut actions);
+    forest(ui, scene, &selected, expansion, visibility, &mut actions);
     actions
 }
 
@@ -120,11 +140,13 @@ fn forest(
     scene: &Scene,
     selected: &BTreeSet<EntityId>,
     expansion: &mut super::ExpansionState,
+    mut visibility: Option<&mut crate::scene_visibility::SceneVisibility>,
     actions: &mut Vec<EditorAction>,
 ) {
     expansion.reconcile(scene);
 
     let entities: BTreeMap<_, _> = scene.entities().map(|entity| (entity.id, entity)).collect();
+    let row_states = visibility.as_deref().map(|state| state.row_states(scene));
     ScrollArea::both()
         .id_salt("hierarchy_forest")
         .show(ui, |ui| {
@@ -150,6 +172,11 @@ fn forest(
                 let sibling_order = scene.sibling_group(entity.parent).unwrap_or_default();
                 let has_children = super::expansion::has_renderable_children(scene, id, depth);
                 let collapsed = expansion.is_collapsed(id);
+                let visibility_state = row_states
+                    .as_ref()
+                    .and_then(|states| states.get(&id))
+                    .copied()
+                    .unwrap_or_default();
                 let recursive_toggle = row::render_entity_row(
                     ui,
                     row::EntityRow {
@@ -161,6 +188,9 @@ fn forest(
                         collapsed,
                     },
                     selected,
+                    visibility_state,
+                    scene,
+                    visibility.as_deref_mut(),
                     actions,
                 );
                 if let Some(recursive) = recursive_toggle {

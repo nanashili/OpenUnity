@@ -16,6 +16,26 @@ pub fn show_reference(
     selection: &Selection,
     browser: &mut HierarchyBrowser,
 ) -> Vec<EditorAction> {
+    show_reference_inner(ui, scene, selection, browser, None)
+}
+
+pub(crate) fn show_reference_with_visibility(
+    ui: &mut Ui,
+    scene: &Scene,
+    selection: &Selection,
+    browser: &mut HierarchyBrowser,
+    visibility: &mut crate::scene_visibility::SceneVisibility,
+) -> Vec<EditorAction> {
+    show_reference_inner(ui, scene, selection, browser, Some(visibility))
+}
+
+fn show_reference_inner(
+    ui: &mut Ui,
+    scene: &Scene,
+    selection: &Selection,
+    browser: &mut HierarchyBrowser,
+    visibility: Option<&mut crate::scene_visibility::SceneVisibility>,
+) -> Vec<EditorAction> {
     let mut actions = Vec::new();
     let primary = selection.primary().filter(|id| scene.get(*id).is_some());
     toolbar(ui, scene, primary, selection, browser, &mut actions);
@@ -30,7 +50,7 @@ pub fn show_reference(
 
     actions.extend(
         browser
-            .tree(ui, scene.name(), selection.ids(), true)
+            .authored_tree(ui, scene, selection.ids(), visibility)
             .into_iter()
             .map(|action| match action {
                 BrowserAction::Select(id, toggle) => EditorAction::Select { id, toggle },

@@ -12,6 +12,7 @@ impl EditorApp {
         if changed {
             if self.imported.is_none() {
                 self.hierarchy_expansion.reconcile(self.document.scene());
+                self.scene_visibility.reconcile(self.document.scene());
             }
             if self.workspace.profile() == AppearanceProfile::Legacy {
                 self.imported_inspector = imported::InspectorPanel::default();
@@ -32,6 +33,7 @@ impl EditorApp {
         if changed {
             if self.imported.is_none() {
                 self.hierarchy_expansion.reconcile(self.document.scene());
+                self.scene_visibility.reconcile(self.document.scene());
             }
             if self.workspace.profile() == AppearanceProfile::Legacy {
                 self.imported_inspector = imported::InspectorPanel::default();

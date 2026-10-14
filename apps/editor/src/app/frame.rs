@@ -46,6 +46,9 @@ impl EditorApp {
 
     /// Render one shell frame; also used for headless panel acceptance checks.
     pub fn show(&mut self, ctx: &Context) {
+        if self.imported.is_none() {
+            self.scene_visibility.reconcile(self.document.scene());
+        }
         if let Some(error) = appearance::apply(ctx, self.workspace.profile()) {
             self.report(Err(error), "");
         }
