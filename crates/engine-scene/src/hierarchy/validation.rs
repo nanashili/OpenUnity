@@ -3,6 +3,20 @@ use engine_identifiers::ObjectId;
 use std::collections::HashSet;
 
 impl SceneHierarchy {
+    /// Return the complete ordered root group for a registered scene.
+    ///
+    /// Unlike target-specific root validation, this accepts a scene with no
+    /// roots while still rejecting malformed membership in every nonempty
+    /// group.
+    pub fn validated_scene_roots(&self, scene: ObjectId) -> Result<&[ObjectId], HierarchyError> {
+        let roots = self
+            .scene_roots
+            .get(&scene)
+            .ok_or(HierarchyError::MissingNode)?;
+        self.validate_scene_roots(scene, roots)?;
+        Ok(roots)
+    }
+
     /// Validate the target membership and return its direct parent, if any.
     pub fn validated_parent(
         &self,

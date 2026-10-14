@@ -6,6 +6,7 @@ use std::thread::{self, ThreadId};
 
 mod hierarchy_admission;
 mod release;
+mod roots;
 mod staging;
 mod transactions;
 

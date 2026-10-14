@@ -16,6 +16,7 @@ mod physics_motion;
 mod physics_query;
 mod runtime_store;
 mod scene;
+mod scene_roots;
 mod scene_snapshot;
 mod status;
 mod timing;
@@ -66,13 +67,14 @@ pub use scene::{
     ou_scene_abi_version, ou_scene_abort, ou_scene_destroy, ou_scene_object, ou_scene_publish,
     ou_scene_release, ou_scene_stage, ou_transform_sibling_index,
 };
+pub use scene_roots::*;
 pub use scene_snapshot::{
     SCENE_SNAPSHOT_ABI_VERSION, ou_scene_snapshot, ou_scene_snapshot_abi_version,
 };
 pub use status::{
-    COUNT_OVERFLOW, GAMEPLAY_FAULTED, HIERARCHY_CYCLE, IDENTITY_EXHAUSTED, INSUFFICIENT_CAPACITY,
-    INVALID_BUFFER, INVALID_KIND, INVALID_LIFECYCLE, INVALID_NUMERIC, INVALID_OBJECT,
-    INVALID_PHYSICS_QUERY, INVALID_RUNTIME, INVALID_SCENE, INVALID_SCENE_PLAN,
+    ALLOCATION_FAILURE, COUNT_OVERFLOW, GAMEPLAY_FAULTED, HIERARCHY_CYCLE, IDENTITY_EXHAUSTED,
+    INSUFFICIENT_CAPACITY, INVALID_BUFFER, INVALID_KIND, INVALID_LIFECYCLE, INVALID_NUMERIC,
+    INVALID_OBJECT, INVALID_PHYSICS_QUERY, INVALID_RUNTIME, INVALID_SCENE, INVALID_SCENE_PLAN,
     INVALID_SIBLING_INDEX, INVALID_UTF8, PHYSICS_UNSUPPORTED, STAGING_BUSY, STORE_UNAVAILABLE,
     UNSUPPORTED_TRANSFORM,
 };

@@ -46,6 +46,8 @@ pub const PHYSICS_UNSUPPORTED: i32 = -18;
 pub const INVALID_PHYSICS_QUERY: i32 = -19;
 /// Sibling index is outside its child or scene-root group.
 pub const INVALID_SIBLING_INDEX: i32 = -20;
+/// A required fallible collection allocation could not be satisfied.
+pub const ALLOCATION_FAILURE: i32 = -21;
 
 pub(crate) fn runtime_error(error: RuntimeError) -> i32 {
     match error {
@@ -56,6 +58,7 @@ pub(crate) fn runtime_error(error: RuntimeError) -> i32 {
         RuntimeError::Cycle => HIERARCHY_CYCLE,
         RuntimeError::Unsupported => UNSUPPORTED_TRANSFORM,
         RuntimeError::CountOverflow => COUNT_OVERFLOW,
+        RuntimeError::AllocationFailure => ALLOCATION_FAILURE,
         RuntimeError::Lifecycle => INVALID_LIFECYCLE,
         RuntimeError::DispatchFaulted => GAMEPLAY_FAULTED,
         RuntimeError::IdentityExhausted => IDENTITY_EXHAUSTED,

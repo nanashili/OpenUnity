@@ -4,7 +4,7 @@ using OpenUnity.Interop;
 namespace UnityEngine;
 
 // The process context owns storage; individual wrappers cannot dispose it.
-internal sealed class RuntimeContext : SafeHandle
+internal sealed partial class RuntimeContext : SafeHandle
 {
     [ThreadStatic] private static bool constructingSceneScript;
     private static readonly Lazy<RuntimeContext> ProcessContext = new(Create);

@@ -33,6 +33,21 @@ public sealed class GameObject : Object
         }
     }
 
+    public UnityEngine.SceneManagement.Scene scene
+    {
+        get
+        {
+            Context.RequireSceneRoots();
+            long scene = Context.Invoke(runtime =>
+                OpenUnityNative.ou_gameobject_scene(runtime, Identity));
+            if (scene == -2)
+                throw new MissingReferenceException("The OpenUnity object has been destroyed.");
+            if (scene < 0)
+                throw RuntimeContext.Failure("GameObject scene query", scene);
+            return UnityEngine.SceneManagement.Scene.FromNativeHandle(Context, scene);
+        }
+    }
+
     public T GetComponent<T>() => (T)(object?)GetComponent(typeof(T))!;
 
     public Component? GetComponent(Type type)
@@ -64,6 +79,37 @@ public sealed class GameObject : Object
 
     internal static GameObject WrapSceneOwner(RuntimeContext context, long owner, long transform) =>
         new(new Created(context, owner, transform));
+
+    internal static GameObject WrapSceneRoot(
+        RuntimeContext context,
+        long owner,
+        long transform)
+    {
+        lock (WrapperLock)
+        {
+            if (Wrappers.TryGetValue(owner, out WeakReference<Object>? ownerReference) &&
+                ownerReference.TryGetTarget(out Object? ownerObject))
+            {
+                if (ownerObject is not GameObject gameObject ||
+                    !ReferenceEquals(gameObject.Context, context) ||
+                    gameObject.ownedTransform.Identity != transform)
+                    throw new InvalidOperationException("OpenUnity returned inconsistent scene-root ownership.");
+                return gameObject;
+            }
+
+            if (Wrappers.TryGetValue(transform, out WeakReference<Object>? transformReference) &&
+                transformReference.TryGetTarget(out Object? transformObject))
+            {
+                if (transformObject is not Transform childTransform ||
+                    !ReferenceEquals(childTransform.Context, context) ||
+                    childTransform.AttachedOwner.Identity != owner)
+                    throw new InvalidOperationException("OpenUnity returned inconsistent scene-root Transform identity.");
+                return childTransform.AttachedOwner;
+            }
+
+            return new GameObject(new Created(context, owner, transform));
+        }
+    }
 
     internal static void ReleaseSceneWrapper(GameObject owner)
     {

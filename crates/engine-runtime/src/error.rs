@@ -19,6 +19,8 @@ pub enum RuntimeError {
     Unsupported,
     /// A collection size cannot be represented by the ABI.
     CountOverflow,
+    /// A fallible collection allocation could not be satisfied.
+    AllocationFailure,
     /// Invalid attachment, lifecycle phase, or callback acknowledgement.
     Lifecycle,
     /// Managed gameplay dispatch failed and cannot continue.
