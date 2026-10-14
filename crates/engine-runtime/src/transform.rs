@@ -130,6 +130,32 @@ impl Runtime {
         }
         Ok(point)
     }
+
+    /// Convert a direction through the Transform's world rotation only.
+    ///
+    /// Position and scale do not affect a direction. When `inverse` is true,
+    /// the world-space direction is converted into local space.
+    /// # Errors
+    /// Returns object/kind or non-finite numeric errors.
+    pub fn transform_direction(
+        &self,
+        id: ObjectId,
+        direction: Vector,
+        inverse: bool,
+    ) -> Result<Vector, RuntimeError> {
+        self.transform(id)?;
+        math::finite(&direction)?;
+
+        let rotation = self.world_rotation(id)?;
+        let rotation = if inverse {
+            math::conjugate(rotation)
+        } else {
+            rotation
+        };
+
+        Ok(math::rotate(rotation, direction)?)
+    }
+
     /// Read one approved local/world pose property into an owned value.
     /// # Errors
     /// Returns object/kind/property or numeric errors.

@@ -17,6 +17,8 @@ public partial class Transform : Component
 
     public Vector3 TransformPoint(Vector3 point) => ConvertPoint(point, false);
     public Vector3 InverseTransformPoint(Vector3 point) => ConvertPoint(point, true);
+    public Vector3 TransformDirection(Vector3 direction) => ConvertDirection(direction, false);
+    public Vector3 InverseTransformDirection(Vector3 direction) => ConvertDirection(direction, true);
 
     public void Translate(Vector3 translation) => Translate(translation, Space.Self);
 
@@ -103,6 +105,25 @@ public partial class Transform : Component
         CheckNative(OpenUnityNative.ou_transform_point(runtime, Identity, input, output, 3, inverse ? 1 : 0), "point conversion");
         return new Vector3(output[0], output[1], output[2]);
     });
+
+    private Vector3 ConvertDirection(Vector3 direction, bool inverse)
+    {
+        Context.RequireTransformDirection();
+        return Context.Invoke(runtime =>
+        {
+            float[] input = [direction.x, direction.y, direction.z];
+            float[] output = new float[3];
+            int status = OpenUnityNative.ou_transform_direction(
+                runtime,
+                Identity,
+                input,
+                output,
+                output.Length,
+                inverse ? 1 : 0);
+            CheckNative(status, "direction conversion");
+            return new Vector3(output[0], output[1], output[2]);
+        });
+    }
 
     private static void Validate(float[] values)
     {

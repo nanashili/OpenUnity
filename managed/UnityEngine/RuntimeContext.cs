@@ -30,6 +30,21 @@ internal sealed class RuntimeContext : SafeHandle
             throw new NotSupportedException("OpenUnity Transform hierarchy ABI 1.0 is unavailable.", error);
         }
     });
+    private static readonly Lazy<bool> TransformDirectionCapability = new(() =>
+    {
+        try
+        {
+            uint abi = OpenUnityNative.ou_transform_direction_abi_version();
+            if (abi != OpenUnityNative.TransformDirectionAbiVersion)
+                throw new NotSupportedException(
+                    $"OpenUnity Transform direction ABI 1.0 is required; received 0x{abi:X8}.");
+            return true;
+        }
+        catch (EntryPointNotFoundException error)
+        {
+            throw new NotSupportedException("OpenUnity Transform direction ABI 1.0 is unavailable.", error);
+        }
+    });
     private readonly long runtime;
     private Exception? unusableReason;
     private readonly Lazy<LifecycleDispatcher> lifecycle;
@@ -74,6 +89,8 @@ internal sealed class RuntimeContext : SafeHandle
     internal void RequireTransform() => _ = TransformCapability.Value;
 
     internal void RequireTransformHierarchy() => _ = TransformHierarchyCapability.Value;
+
+    internal void RequireTransformDirection() => _ = TransformDirectionCapability.Value;
 
     internal LifecycleDispatcher Lifecycle => lifecycle.Value;
 

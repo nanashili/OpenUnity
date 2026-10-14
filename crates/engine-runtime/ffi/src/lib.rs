@@ -19,6 +19,7 @@ mod scene;
 mod scene_snapshot;
 mod status;
 mod timing;
+mod transform_direction;
 mod transform_hierarchy;
 mod transform_pose;
 
@@ -76,6 +77,9 @@ pub use status::{
 pub use timing::{
     TIME_ABI_VERSION, ou_time_abi_version, ou_time_begin_fixed, ou_time_begin_frame,
     ou_time_configure, ou_time_next, ou_time_set, ou_time_snapshot,
+};
+pub use transform_direction::{
+    TRANSFORM_DIRECTION_ABI_VERSION, ou_transform_direction, ou_transform_direction_abi_version,
 };
 pub use transform_hierarchy::{
     TRANSFORM_HIERARCHY_ABI_VERSION, ou_transform_child, ou_transform_child_count,
