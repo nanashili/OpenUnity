@@ -9,6 +9,7 @@ mod release;
 mod roots;
 mod staging;
 mod transactions;
+mod validity;
 
 #[derive(Debug)]
 struct Scene {

@@ -16,8 +16,10 @@ mod physics_motion;
 mod physics_query;
 mod runtime_store;
 mod scene;
+mod scene_exports;
 mod scene_roots;
 mod scene_snapshot;
+mod scene_validity;
 mod status;
 mod timing;
 mod transform_detach;
@@ -63,10 +65,7 @@ pub use physics_query::{
     ou_physics_query_abi_version, ou_physics_raycast_segment,
 };
 pub use runtime_store::{ou_runtime_create, ou_runtime_destroy};
-pub use scene::{
-    ou_scene_abi_version, ou_scene_abort, ou_scene_destroy, ou_scene_object, ou_scene_publish,
-    ou_scene_release, ou_scene_stage, ou_transform_sibling_index,
-};
+pub use scene_exports::*;
 pub use scene_roots::*;
 pub use scene_snapshot::{
     SCENE_SNAPSHOT_ABI_VERSION, ou_scene_snapshot, ou_scene_snapshot_abi_version,

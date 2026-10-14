@@ -15,5 +15,6 @@
     <Compile Include="../Engine.Interop/OpenUnityNative.PhysicsMotion.cs" Link="Interop/OpenUnityNative.PhysicsMotion.cs" />
     <Compile Include="../Engine.Interop/OpenUnityNative.SceneSnapshot.cs" Link="Interop/OpenUnityNative.SceneSnapshot.cs" />
     <Compile Include="../Engine.Interop/OpenUnityNative.SceneRoots.cs" Link="Interop/OpenUnityNative.SceneRoots.cs" />
+    <Compile Include="../Engine.Interop/OpenUnityNative.SceneValidity.cs" Link="Interop/OpenUnityNative.SceneValidity.cs" />
   </ItemGroup>
 </Project>

@@ -32,6 +32,27 @@ public readonly struct Scene : IEquatable<Scene>
         }
     }
 
+    public bool IsValid()
+    {
+        if (context is null)
+            return false;
+
+        context.RequireSceneValidity();
+        int status = context.Invoke(runtime => OpenUnityNative.ou_scene_is_valid(runtime, handle));
+        if (status < 0)
+        {
+            if (status == -15)
+                return false;
+
+            throw RuntimeContext.Failure("scene validity query", status);
+        }
+
+        if (status > 1)
+            throw new InvalidOperationException("OpenUnity returned an invalid scene validity result.");
+
+        return status == 1;
+    }
+
     public GameObject[] GetRootGameObjects()
     {
         if (context is null)
@@ -70,6 +91,10 @@ public readonly struct Scene : IEquatable<Scene>
     public override int GetHashCode() => context is null
         ? 0
         : HashCode.Combine(RuntimeHelpers.GetHashCode(context), handle);
+
+    public static bool operator ==(Scene left, Scene right) => left.Equals(right);
+
+    public static bool operator !=(Scene left, Scene right) => !left.Equals(right);
 
     internal static Scene FromNativeHandle(RuntimeContext context, long handle) => handle switch
     {
