@@ -1,9 +1,12 @@
+using System.Collections;
 using OpenUnity.Interop;
 
 namespace UnityEngine;
 
-public partial class Transform
+public partial class Transform : IEnumerable
 {
+    IEnumerator IEnumerable.GetEnumerator() => new TransformChildEnumerator(this);
+
     public Transform? parent
     {
         get
