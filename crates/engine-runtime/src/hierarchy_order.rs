@@ -36,10 +36,21 @@ impl Runtime {
         let children = self.validate_sibling_group(transform, parent)?;
         self.validate_sibling_scene(parent)?;
         let index = checked_sibling_index(index, children.len())?;
+        let current_index = children
+            .iter()
+            .position(|child| *child == transform)
+            .ok_or(RuntimeError::InvalidKind)?;
+        if current_index == index {
+            return Ok(());
+        }
 
+        let notifications = self.prepare_sibling_notifications(parent)?;
         self.hierarchy
             .set_sibling_index(transform, index)
-            .map_err(crate::hierarchy::map_hierarchy_error)
+            .map_err(crate::hierarchy::map_hierarchy_error)?;
+
+        self.commit_hierarchy_notifications(notifications);
+        Ok(())
     }
 
     fn set_scene_root_sibling_index(

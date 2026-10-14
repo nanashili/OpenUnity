@@ -11,7 +11,7 @@ internal static partial class OpenUnityNative
     internal const uint ObjectNameAbiVersion = 0x0001_0000;
     internal const uint TransformAbiVersion = 0x0001_0000;
     internal const uint TransformHierarchyAbiVersion = 0x0001_0000;
-    internal const uint LifecycleAbiVersion = 0x0001_0000;
+    internal const uint LifecycleAbiVersion = 0x0002_0000;
     internal const uint SceneAbiVersion = 0x0001_0000;
     internal const uint TimeAbiVersion = 0x0001_0000;
     internal const uint PhysicsGravityAbiVersion = 0x0001_0000;

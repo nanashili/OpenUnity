@@ -7,14 +7,24 @@ namespace UnityEngine;
 // retains canonical wrappers and invokes the returned callback snapshots.
 internal sealed partial class LifecycleDispatcher
 {
-    private static readonly string[] EventNames =
-        ["Awake", "OnEnable", "Start", "Update", "LateUpdate", "OnDisable", "OnDestroy"];
+    private static readonly IReadOnlyDictionary<int, string> EventNames = new Dictionary<int, string>
+    {
+        [1] = "Awake",
+        [2] = "OnEnable",
+        [3] = "Start",
+        [4] = "Update",
+        [5] = "LateUpdate",
+        [6] = "OnDisable",
+        [7] = "OnDestroy",
+        [9] = "OnTransformChildrenChanged",
+        [10] = "OnTransformParentChanged"
+    };
     [ThreadStatic] private static ConstructionScope? construction;
     private readonly RuntimeContext context;
     private readonly int ownerThread = Environment.CurrentManagedThreadId;
     private readonly Dictionary<long, MonoBehaviour> attachments = new();
     private readonly Dictionary<long, GameObject> owners = new();
-    private readonly Dictionary<Type, MethodInfo?[]> callbacks = new();
+    private readonly Dictionary<Type, IReadOnlyDictionary<int, MethodInfo?>> callbacks = new();
     private int pumpDepth;
     private bool timed;
     private readonly Dictionary<Type, MethodInfo?> fixedCallbacks = new();
@@ -24,7 +34,7 @@ internal sealed partial class LifecycleDispatcher
     {
         uint abi = OpenUnityNative.ou_lifecycle_abi_version();
         if (abi != OpenUnityNative.LifecycleAbiVersion)
-            throw new InvalidOperationException($"OpenUnity lifecycle ABI 1.0 is required; received 0x{abi:X8}.");
+            throw new InvalidOperationException($"OpenUnity lifecycle ABI 2.0 is required; received 0x{abi:X8}.");
         this.context = context;
     }
 

@@ -27,13 +27,14 @@ internal sealed partial class LifecycleDispatcher
             fixedCallbacks.Add(type, ResolveCallback(type, "FixedUpdate"));
     }
 
-    private MethodInfo?[] ResolveCallbacks(Type type)
+    private IReadOnlyDictionary<int, MethodInfo?> ResolveCallbacks(Type type)
     {
-        if (callbacks.TryGetValue(type, out MethodInfo?[]? existing))
+        if (callbacks.TryGetValue(type, out IReadOnlyDictionary<int, MethodInfo?>? existing))
             return existing;
-        MethodInfo?[] methods = new MethodInfo?[EventNames.Length];
-        for (int index = 0; index < EventNames.Length; index++)
-            methods[index] = ResolveCallback(type, EventNames[index]);
+
+        Dictionary<int, MethodInfo?> methods = new();
+        foreach ((int eventId, string name) in EventNames)
+            methods.Add(eventId, ResolveCallback(type, name));
         return methods;
     }
 

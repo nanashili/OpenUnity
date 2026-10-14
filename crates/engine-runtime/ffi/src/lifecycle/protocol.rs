@@ -3,8 +3,8 @@
 use crate::status::{INVALID_KIND, runtime_error};
 use engine_runtime::RuntimeError;
 
-/// Independent lifecycle extension major 1, minor 0.
-pub const LIFECYCLE_ABI_VERSION: u32 = 0x0001_0000;
+/// Independent lifecycle extension major 2, minor 0, including Transform callbacks.
+pub const LIFECYCLE_ABI_VERSION: u32 = 0x0002_0000;
 
 pub(super) fn status(result: Result<(), RuntimeError>) -> i32 {
     result.map_or_else(runtime_error, |()| 0)

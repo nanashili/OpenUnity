@@ -85,6 +85,9 @@ impl Runtime {
         self.lifecycle
             .scripts
             .retain(|id, script| !ids.contains(id) && !ids.contains(&script.owner.to_raw()));
+        self.lifecycle
+            .hierarchy_notifications
+            .retain(|(component, _)| !ids.contains(&component.to_raw()));
         let cursor = self.lifecycle.snapshot
             [..self.lifecycle.cursor.min(self.lifecycle.snapshot.len())]
             .iter()

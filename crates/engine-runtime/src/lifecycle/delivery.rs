@@ -28,6 +28,9 @@ impl Runtime {
         if let Some(event) = self.mutation_event() {
             return Ok(Some(event));
         }
+        if let Some(event) = self.next_hierarchy_notification() {
+            return Ok(Some(event));
+        }
         if mode == 1 {
             if self.clock.fixed_active() {
                 return Ok(self.snapshot_event(8));
@@ -64,6 +67,10 @@ impl Runtime {
             .scripts
             .get_mut(&component.to_raw())
             .ok_or(RuntimeError::InvalidObject)?;
+        let in_flight = script
+            .in_flight
+            .checked_add(1)
+            .ok_or(RuntimeError::Lifecycle)?;
         match event {
             1 => script.awakened = true,
             2 => script.notified_enabled = true,
@@ -72,7 +79,7 @@ impl Runtime {
             7 => script.notified_destroy = true,
             _ => {}
         }
-        script.in_flight = true;
+        script.in_flight = in_flight;
         let delivery = LifecycleEvent {
             token: token.to_raw(),
             component,
@@ -174,7 +181,10 @@ impl Runtime {
             .tokens
             .remove(token_id)
             .ok_or(RuntimeError::Lifecycle)?;
-        script.in_flight = false;
+        script.in_flight = script
+            .in_flight
+            .checked_sub(1)
+            .ok_or(RuntimeError::Lifecycle)?;
         self.lifecycle
             .deliveries
             .truncate(self.lifecycle.deliveries.len() - 1);

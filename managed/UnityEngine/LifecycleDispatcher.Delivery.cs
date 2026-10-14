@@ -58,13 +58,24 @@ internal sealed partial class LifecycleDispatcher
     {
         try
         {
-            int maximumEvent = mode == 2 ? 8 : EventNames.Length;
-            if (lifecycleEvent < 1 || lifecycleEvent > maximumEvent ||
-                !attachments.TryGetValue(identity, out MonoBehaviour? script))
+            if (!attachments.TryGetValue(identity, out MonoBehaviour? script))
                 throw new InvalidOperationException("OpenUnity returned an invalid managed lifecycle snapshot.");
-            MethodInfo? callback = lifecycleEvent == 8
-                ? fixedCallbacks[script.GetType()]
-                : callbacks[script.GetType()][lifecycleEvent - 1];
+
+            MethodInfo? callback;
+            if (lifecycleEvent == 8 && mode == 2)
+            {
+                callback = fixedCallbacks[script.GetType()];
+            }
+            else if (lifecycleEvent != 8 && EventNames.ContainsKey(lifecycleEvent) &&
+                callbacks[script.GetType()].TryGetValue(lifecycleEvent, out MethodInfo? ordinaryCallback))
+            {
+                callback = ordinaryCallback;
+            }
+            else
+            {
+                throw new InvalidOperationException("OpenUnity returned an invalid managed lifecycle event.");
+            }
+
             callback?.Invoke(script, null);
         }
         catch (Exception error)

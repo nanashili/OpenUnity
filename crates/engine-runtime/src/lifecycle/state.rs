@@ -1,7 +1,7 @@
 //! Private lifecycle records shared by the owning lifecycle modules.
 
 use engine_object::{ObjectId, Registry};
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, VecDeque};
 
 /// A copied callback delivery; no runtime storage or managed pointer escapes.
 #[derive(Clone, Copy, Debug)]
@@ -10,7 +10,7 @@ pub struct LifecycleEvent {
     pub token: i64,
     /// Attached script identity.
     pub component: ObjectId,
-    /// Reviewed event code, Awake=1 through OnDestroy=7, additive FixedUpdate=8.
+    /// Event code: Awake=1 through OnDestroy=7, FixedUpdate=8, hierarchy=9–10.
     pub event: i32,
 }
 
@@ -23,7 +23,7 @@ pub(crate) struct Script {
     pub(in crate::lifecycle) awakened: bool,
     pub(in crate::lifecycle) started: bool,
     pub(in crate::lifecycle) notified_enabled: bool,
-    pub(in crate::lifecycle) in_flight: bool,
+    pub(in crate::lifecycle) in_flight: u32,
     pub(in crate::lifecycle) pending_destroy: bool,
     pub(in crate::lifecycle) notified_destroy: bool,
 }
@@ -38,6 +38,7 @@ pub(in crate::lifecycle) struct DestroyTarget {
 pub(crate) struct Lifecycle {
     pub(crate) scripts: BTreeMap<i64, Script>,
     pub(in crate::lifecycle) deliveries: Vec<LifecycleEvent>,
+    pub(in crate::lifecycle) hierarchy_notifications: VecDeque<(ObjectId, i32)>,
     pub(in crate::lifecycle) tokens: Registry<()>,
     pub(in crate::lifecycle) frame_count: i32,
     pub(in crate::lifecycle) frame_started: bool,

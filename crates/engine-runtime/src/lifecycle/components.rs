@@ -29,7 +29,7 @@ impl Runtime {
                 awakened: false,
                 started: false,
                 notified_enabled: false,
-                in_flight: false,
+                in_flight: 0,
                 pending_destroy: false,
                 notified_destroy: false,
             },

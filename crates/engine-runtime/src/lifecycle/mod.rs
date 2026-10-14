@@ -8,6 +8,7 @@ mod destruction_commit;
 mod destruction_requests;
 mod eligibility;
 mod frames;
+mod hierarchy_notifications;
 mod state;
 mod timed_frames;
 

@@ -67,6 +67,7 @@ impl Runtime {
             (data.position, data.rotation, data.scale)
         };
 
+        let notifications = self.prepare_reparent_notifications(current_parent, parent, id)?;
         let target = self.hierarchy_target(id, parent)?;
         self.hierarchy
             .reparent(id, target)
@@ -75,6 +76,7 @@ impl Runtime {
         data.position = position;
         data.rotation = rotation;
         data.scale = scale;
+        self.commit_hierarchy_notifications(notifications);
         Ok(())
     }
 
